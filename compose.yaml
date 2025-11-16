@@ -1,0 +1,116 @@
+services:
+  librespeed:
+    container_name: librespeed
+    image: ghcr.io/librespeed/speedtest:latest
+    restart: unless-stopped
+    environment:
+      MODE: standalone
+    ports:
+      - 8001:8080  # Expose on host port 80
+    volumes:
+      - /mnt/storage/docker/data/librespeed:/database
+  dozzle:
+    container_name: dozzle
+    image: amir20/dozzle:v8.14.8
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 8002:8080
+    # Uncomment and add environment variables below as needed
+    environment:
+       DOZZLE_ENABLE_ACTIONS: "true"
+       DOZZLE_ENABLE_SHELL: "true"
+    #   DOZZLE_AUTH_PROVIDER: "simple"
+  netdata:
+    container_name: netdata
+    image: netdata/netdata:v2.7.3
+    restart: unless-stopped
+    init: true
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    ports:
+      - 8003:19999  # Expose Netdata dashboard on host port 8003
+    volumes:
+      - /mnt/storage/docker/data/netdata/config:/etc/netdata
+      - /mnt/storage/docker/data/netdata/lib:/var/lib/netdata
+      - /mnt/storage/docker/data/netdata/cache:/var/cache/netdata
+      - /:/host/root:ro,rslave
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/os-release:/host/etc/os-release:ro
+      - /var/log:/host/var/log:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /run/dbus:/run/dbus:ro
+  portainer:
+    container_name: portainer
+    image: portainer/portainer-ce:2.20.2
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /mnt/storage/docker/data/portainer:/data
+    ports:
+      - 8004:9443  # Portainer UI (host:container)
+  pihole: # i set dnsstublistener to no in /etc/systemd/resovled.conf
+    container_name: pihole
+    image: pihole/pihole:2025.11.0
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      # - "80:80/tcp"
+      - "8005:443/tcp"  # Map container 443 to host 8005
+      # Uncomment the line below if you want to use Pi-hole as DHCP server
+      # - "67:67/udp"
+      # Uncomment the line below if you want to use Pi-hole as NTP server
+      # - "123:123/udp"
+    environment:
+      TZ: 'Europe/London'  # Set your timezone
+      PIHOLE_DNS_1: 8.8.8.8 # the main DNS resolver
+      PIHOLE_DNS_2: 8.8.4.4 # secondary DNS resolver
+      FTLCONF_dns_listeningMode: 'all'
+      # Set a password for the web interface (leave blank for random)
+      # FTLCONF_webserver_api_password: 'changeme'
+      # Upstream DNS servers (semicolon separated)
+      # FTLCONF_dns_upstreams: '8.8.8.8;8.8.4.4'
+      # Uncomment to load custom dnsmasq config files (see docs)
+      # FTLCONF_misc_etc_dnsmasq_d: 'true'
+    dns:
+      - 127.0.0.1 # system resolver
+    volumes:
+      - /mnt/storage/docker/data/pihole/etc-pihole:/etc/pihole
+      # Uncomment if you want to persist custom dnsmasq configs
+      # - /mnt/storage/docker/data/pihole/etc-dnsmasq.d:/etc/dnsmasq.d
+    cap_add:
+      - NET_ADMIN
+      - SYS_TIME
+      - SYS_NICE
+    # Optional: Uncomment if you want to override user/group IDs
+    # environment:
+    #   PIHOLE_UID: 1000
+    #   PIHOLE_GID: 1000
+  yt-dlp-webui:
+    container_name: yt-dlp-webui
+    image: ghcr.io/marcopiovanello/yt-dlp-web-ui:latest
+    restart: unless-stopped
+    ports:
+      - 8006:3033  # Web UI exposed on host port 8006
+    volumes:
+      - /mnt/storage/docker/data/yt-dlp-webui/downloads:/downloads
+      - /mnt/storage/docker/data/yt-dlp-webui/config:/config
+    # Uncomment and set environment variables below as needed
+    # environment:
+    #   JWT_SECRET: "your_jwt_secret"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3033"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
