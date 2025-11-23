@@ -77,6 +77,7 @@ services:
       PIHOLE_DNS_1: 8.8.8.8 # the main DNS resolver
       PIHOLE_DNS_2: 8.8.4.4 # secondary DNS resolver
       FTLCONF_dns_listeningMode: 'all'
+      FTLCONF_webserver_api_password: '${PIHOLE_FTLCONF_webserver_api_password}'
       # Set a password for the web interface (leave blank for random)
       # FTLCONF_webserver_api_password: 'changeme'
       # Upstream DNS servers (semicolon separated)
@@ -122,3 +123,41 @@ services:
       - /mnt/storage/docker/data/uptime-kuma:/app/data
     ports:
       - 8007:3001  # Uptime Kuma UI exposed on host port 8007
+
+  smokeping:
+    container_name: smokeping
+    image: lscr.io/linuxserver/smokeping:latest
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - /mnt/storage/docker/data/smokeping/config:/config
+      - /mnt/storage/docker/data/smokeping/data:/data
+    ports:
+      - 8008:80  # Smokeping web UI exposed on host port 8008
+
+  plex:
+    container_name: plex
+    image: plexinc/pms-docker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - TZ=Etc/UTC
+      - ADVERTISE_IP=http://192.168.178.87:8009/
+    ports:
+      - 8009:32400/tcp   # Plex web interface
+      - 8324:8324/tcp
+      - 32469:32469/tcp
+      - 1900:1900/udp
+      - 32410:32410/udp
+      - 32412:32412/udp
+      - 32413:32413/udp
+      - 32414:32414/udp
+    hostname: lindus
+    volumes:
+      - /mnt/storage/docker/data/plex/config:/config
+      - /mnt/storage/plex/transcode:/transcode
+      - /mnt/storage/plex/media:/data

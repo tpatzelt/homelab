@@ -9,10 +9,9 @@ DATE=$(date '+%Y-%m-%d %H:%M:%S')
 
 echo "[$DATE] Starting backup" >> "$LOG"
 
-# Mount RW for backup
-if ! mount -t cifs //192.168.178.1/FRITZ.NAS /mnt/backup \
-    -o credentials=/root/.smbcredentials,iocharset=utf8,uid=1000,gid=1000,vers=3.0,noperm,noserverino,_netdev,rw; then
-    echo "[$DATE] ERROR: cannot mount backup share read-write" >> "$LOG"
+# Mount USB backup drive (ext4)
+if ! mount /dev/sdc1 /mnt/backup; then
+    echo "[$DATE] ERROR: cannot mount /dev/sdc1 to /mnt/backup" >> "$LOG"
     exit 1
 fi
 

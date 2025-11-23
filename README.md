@@ -11,11 +11,12 @@ Minimal, personal homelab configuration.
 - for pihole setup: Set `DNSStubListener=no` in `/usr/lib/systemd/resolved.conf` and then run `systemctl restart systemd-resolved` 
 - https://docs.pi-hole.net/routers/fritzbox/#distribute-pi-hole-as-dns-server-via-dhcp
 - Setup cronjobs with crontab: `[sudo] crontab -e`
-- Cronjob and other scripts are located at `/usr/local/bin` 
+- Cronjob and other scripts are located at `/usr/local/bin` or `~/.local/bin`
 
 
 To enable mount volumes on boot:
 ```
+lsblk
 # First, get the UUIDs:
 sudo blkid /dev/sdb2
 
