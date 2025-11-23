@@ -9,7 +9,7 @@ Minimal, personal homelab configuration.
 
 ### Additional Configuration
 - for pihole setup: Set `DNSStubListener=no` in `/usr/lib/systemd/resolved.conf` and then run `systemctl restart systemd-resolved` 
-- https://docs.pi-hole.net/routers/fritzbox/#distribute-pi-hole-as-dns-server-via-dhcp
+- https://docs.pi-hole.net/routers/fritzbox/#distribute-pi-hole-as-dns-server-via-dhcp -> Set fritzbox as dns lease
 - Setup cronjobs with crontab: `[sudo] crontab -e`
 - Cronjob and other scripts are located at `/usr/local/bin` or `~/.local/bin`
 
