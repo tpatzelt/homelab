@@ -123,21 +123,18 @@ services:
       - /mnt/storage/docker/data/uptime-kuma:/app/data
     ports:
       - 8007:3001  # Uptime Kuma UI exposed on host port 8007
-
-  smokeping:
-    container_name: smokeping
-    image: lscr.io/linuxserver/smokeping:latest
+  heimdall:
+    container_name: heimdall
+    image: lscr.io/linuxserver/heimdall:latest
     restart: unless-stopped
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Etc/UTC
+      - TZ=Europe/London
     volumes:
-      - /mnt/storage/docker/data/smokeping/config:/config
-      - /mnt/storage/docker/data/smokeping/data:/data
+      - /mnt/storage/docker/data/heimdall:/config
     ports:
-      - 8008:80  # Smokeping web UI exposed on host port 8008
-
+      - 8008:80  # Heimdall web interface on host port 8008
   plex:
     container_name: plex
     image: plexinc/pms-docker
