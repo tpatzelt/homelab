@@ -59,7 +59,7 @@ services:
       - 8004:9443  # Portainer UI (host:container)
   pihole: # i set dnsstublistener to no in /etc/systemd/resovled.conf
     container_name: pihole
-    image: pihole/pihole:2025.11.0
+    image: pihole/pihole:2025.11.1
     restart: unless-stopped
     env_file:
       - .env
@@ -137,7 +137,7 @@ services:
       - 8008:80  # Heimdall web interface on host port 8008
   plex:
     container_name: plex
-    image: plexinc/pms-docker
+    image: plexinc/pms-docker:1.42.2.10156-f737b826c
     restart: unless-stopped
     env_file:
       - .env
