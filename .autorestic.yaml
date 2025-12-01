@@ -1,0 +1,64 @@
+version: 2
+
+backends:
+  backup-hdd:
+    type: local
+    path: /mnt/backup/restic-backups
+    key: ${RESTIC_PASSWORD}
+
+# 2. GLOBAL HOOKS
+# We move the mount logic to 'prevalidate' so the drive is ready 
+# before Autorestic checks if the backend exists.
+global:
+  hooks:
+    prevalidate:
+      - echo "Mounting Backup Drive..."
+      # Check if mounted, if not, mount it
+      - mountpoint -q /mnt/backup || mount /dev/sdc1 /mnt/backup
+    after:
+      - echo "Unmounting Backup Drive..."
+      - umount /mnt/backup
+    failure:
+      - echo "Backup Failed! Unmounting..."
+      - umount /mnt/backup
+
+# 3. DEFINE WHAT TO BACKUP
+locations:
+  # SOURCE A: Standard Data (No downtime needed)
+  my-data:
+    from: /mnt/storage/data
+    to: backup-hdd
+    options:
+      forget:
+        keep-last: 7
+        keep-daily: 7
+        keep-weekly: 4
+        keep-monthly: 6
+
+  # SOURCE B: Docker Data (Needs to stop containers)
+  docker-data:
+    from: /mnt/storage/docker
+    to: backup-hdd
+    hooks:
+      before:
+        - echo "Stopping critical containers..."
+        - docker stop plex uptime-kuma portainer netdata yt-dlp-webui librespeed heimdall
+      after:
+        - echo "Restarting containers..."
+        - docker start plex uptime-kuma portainer netdata yt-dlp-webui librespeed heimdall
+      failure:
+        - echo "Backup Failed! Restarting containers to ensure uptime..."
+        - docker start plex uptime-kuma portainer netdata yt-dlp-webui librespeed heimdall
+    options:
+      forget:
+        keep-last: 7
+        keep-daily: 7
+        keep-weekly: 4
+
+  # SOURCE C: Single File/Env Secret
+  secrets:
+    from: /home/tim/coding/homelab/.env
+    to: backup-hdd
+    options:
+      forget:
+        keep-last: 10
