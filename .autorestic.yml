@@ -6,14 +6,10 @@ backends:
     path: /mnt/backup/restic-backups
     key: ${RESTIC_PASSWORD}
 
-# 2. GLOBAL HOOKS
-# We move the mount logic to 'prevalidate' so the drive is ready 
-# before Autorestic checks if the backend exists.
 global:
   hooks:
     prevalidate:
       - echo "Mounting Backup Drive..."
-      # Check if mounted, if not, mount it
       - mountpoint -q /mnt/backup || mount /dev/sdc1 /mnt/backup
     after:
       - echo "Unmounting Backup Drive..."
@@ -22,9 +18,7 @@ global:
       - echo "Backup Failed! Unmounting..."
       - umount /mnt/backup
 
-# 3. DEFINE WHAT TO BACKUP
 locations:
-  # SOURCE A: Standard Data (No downtime needed)
   my-data:
     from: /mnt/storage/data
     to: backup-hdd
@@ -35,27 +29,48 @@ locations:
         keep-weekly: 4
         keep-monthly: 6
 
-  # SOURCE B: Docker Data (Needs to stop containers)
   docker-data:
     from: /mnt/storage/docker
     to: backup-hdd
     hooks:
       before:
-        - echo "Stopping critical containers..."
-        - docker stop plex uptime-kuma portainer netdata yt-dlp-webui librespeed heimdall
+        - echo "Generating list of containers to stop..."
+        # 1. Get running containers
+        # 2. Exclude pihole/autorestic
+        # 3. Save to file
+        - docker ps --format '{{.Names}}' | grep -vE '^(pihole|autorestic)$' > /tmp/backup_containers.list
+        
+        - echo "Stopping containers found in list..."
+        - if [ -s /tmp/backup_containers.list ]; then docker stop $(cat /tmp/backup_containers.list); fi
+      
       after:
-        - echo "Restarting containers..."
-        - docker start plex uptime-kuma portainer netdata yt-dlp-webui librespeed heimdall
+        - echo "Restarting containers (Attempt 1)..."
+        # The '|| true' ensures the script doesn't crash if qbittorrent fails on the first try
+        - if [ -s /tmp/backup_containers.list ]; then docker start $(cat /tmp/backup_containers.list) || true; fi
+        
+        - echo "Waiting for network stacks to initialize..."
+        - sleep 5
+        
+        - echo "Restarting containers (Attempt 2 - Cleanup)..."
+        # This second run picks up containers (like qbittorrent) that failed because gluetun wasn't ready yet
+        - if [ -s /tmp/backup_containers.list ]; then docker start $(cat /tmp/backup_containers.list); fi
+        
+        - rm -f /tmp/backup_containers.list
+      
       failure:
-        - echo "Backup Failed! Restarting containers to ensure uptime..."
-        - docker start plex uptime-kuma portainer netdata yt-dlp-webui librespeed heimdall
+        - echo "Backup Failed! Restarting containers..."
+        # Same double-start logic for failure mode
+        - if [ -s /tmp/backup_containers.list ]; then docker start $(cat /tmp/backup_containers.list) || true; fi
+        - sleep 5
+        - if [ -s /tmp/backup_containers.list ]; then docker start $(cat /tmp/backup_containers.list); fi
+        - rm -f /tmp/backup_containers.list
+
     options:
       forget:
         keep-last: 7
         keep-daily: 7
         keep-weekly: 4
 
-  # SOURCE C: Single File/Env Secret
   secrets:
     from: /home/tim/coding/homelab/.env
     to: backup-hdd
