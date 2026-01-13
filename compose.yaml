@@ -1,4 +1,7 @@
 services:
+  # ==========================================
+  # EXISTING HOMELAB SERVICES
+  # ==========================================
   librespeed:
     container_name: librespeed
     image: ghcr.io/librespeed/speedtest:latest
@@ -6,9 +9,10 @@ services:
     environment:
       MODE: standalone
     ports:
-      - 8001:8080  # Expose on host port 80
+      - 8001:8080
     volumes:
       - /mnt/storage/docker/data/librespeed:/database
+
   dozzle:
     container_name: dozzle
     image: amir20/dozzle:v8.14.8
@@ -17,11 +21,10 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - 8002:8080
-    # Uncomment and add environment variables below as needed
     environment:
-       DOZZLE_ENABLE_ACTIONS: "true"
-       DOZZLE_ENABLE_SHELL: "true"
-    #   DOZZLE_AUTH_PROVIDER: "simple"
+      DOZZLE_ENABLE_ACTIONS: "true"
+      DOZZLE_ENABLE_SHELL: "true"
+
   netdata:
     container_name: netdata
     image: netdata/netdata:v2.7.3
@@ -33,7 +36,7 @@ services:
     security_opt:
       - apparmor:unconfined
     ports:
-      - 8003:19999  # Expose Netdata dashboard on host port 8003
+      - 8003:19999
     volumes:
       - /mnt/storage/docker/data/netdata/config:/etc/netdata
       - /mnt/storage/docker/data/netdata/lib:/var/lib/netdata
@@ -48,6 +51,7 @@ services:
       - /var/log:/host/var/log:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /run/dbus:/run/dbus:ro
+
   portainer:
     container_name: portainer
     image: portainer/portainer-ce:2.20.2
@@ -56,8 +60,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - /mnt/storage/docker/data/portainer:/data
     ports:
-      - 8004:9443  # Portainer UI (host:container)
-  pihole: # i set dnsstublistener to no in /etc/systemd/resovled.conf
+      - 8004:9443
+
+  pihole:
     container_name: pihole
     image: pihole/pihole:2025.11.1
     restart: unless-stopped
@@ -66,55 +71,37 @@ services:
     ports:
       - "53:53/tcp"
       - "53:53/udp"
-      # - "80:80/tcp"
-      - "8005:443/tcp"  # Map container 443 to host 8005
-      # Uncomment the line below if you want to use Pi-hole as DHCP server
-      # - "67:67/udp"
-      # Uncomment the line below if you want to use Pi-hole as NTP server
-      # - "123:123/udp"
+      - "8005:443/tcp"
     environment:
-      TZ: 'Europe/London'  # Set your timezone
-      PIHOLE_DNS_1: 8.8.8.8 # the main DNS resolver
-      PIHOLE_DNS_2: 8.8.4.4 # secondary DNS resolver
+      TZ: 'Europe/Berlin'
+      PIHOLE_DNS_1: 8.8.8.8
+      PIHOLE_DNS_2: 8.8.4.4
       FTLCONF_dns_listeningMode: 'all'
       FTLCONF_webserver_api_password: '${PIHOLE_FTLCONF_webserver_api_password}'
-      # Set a password for the web interface (leave blank for random)
-      # FTLCONF_webserver_api_password: 'changeme'
-      # Upstream DNS servers (semicolon separated)
-      # FTLCONF_dns_upstreams: '8.8.8.8;8.8.4.4'
-      # Uncomment to load custom dnsmasq config files (see docs)
-      # FTLCONF_misc_etc_dnsmasq_d: 'true'
     dns:
-      - 127.0.0.1 # system resolver
+      - 127.0.0.1
     volumes:
       - /mnt/storage/docker/data/pihole/etc-pihole:/etc/pihole
-      # Uncomment if you want to persist custom dnsmasq configs
-      # - /mnt/storage/docker/data/pihole/etc-dnsmasq.d:/etc/dnsmasq.d
     cap_add:
       - NET_ADMIN
       - SYS_TIME
       - SYS_NICE
-    # Optional: Uncomment if you want to override user/group IDs
-    # environment:
-    #   PIHOLE_UID: 1000
-    #   PIHOLE_GID: 1000
+
   yt-dlp-webui:
     container_name: yt-dlp-webui
     image: ghcr.io/marcopiovanello/yt-dlp-web-ui:latest
     restart: unless-stopped
     ports:
-      - 8006:3033  # Web UI exposed on host port 8006
+      - 8006:3033
     volumes:
       - /mnt/storage/docker/data/yt-dlp-webui/downloads:/downloads
       - /mnt/storage/docker/data/yt-dlp-webui/config:/config
-    # Uncomment and set environment variables below as needed
-    # environment:
-    #   JWT_SECRET: "your_jwt_secret"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3033"]
       interval: 30s
       timeout: 10s
       retries: 3
+
   uptime-kuma:
     container_name: uptime-kuma
     image: louislam/uptime-kuma:2.0.2
@@ -122,19 +109,21 @@ services:
     volumes:
       - /mnt/storage/docker/data/uptime-kuma:/app/data
     ports:
-      - 8007:3001  # Uptime Kuma UI exposed on host port 8007
+      - 8007:3001
+
   heimdall:
     container_name: heimdall
     image: lscr.io/linuxserver/heimdall:latest
     restart: unless-stopped
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/London
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Europe/Berlin
     volumes:
       - /mnt/storage/docker/data/heimdall:/config
     ports:
-      - 8008:80  # Heimdall web interface on host port 8008
+      - 8008:80
+
   plex:
     container_name: plex
     image: plexinc/pms-docker:1.42.2.10156-f737b826c
@@ -142,10 +131,10 @@ services:
     env_file:
       - .env
     environment:
-      - TZ=Etc/UTC
+      - TZ=Europe/Berlin
       - ADVERTISE_IP=http://192.168.178.87:8009/
     ports:
-      - 8009:32400/tcp   # Plex web interface
+      - 8009:32400/tcp
       - 8324:8324/tcp
       - 32469:32469/tcp
       - 1900:1900/udp
@@ -157,4 +146,166 @@ services:
     volumes:
       - /mnt/storage/docker/data/plex/config:/config
       - /mnt/storage/plex/transcode:/transcode
+      # "data" is the internal mapping Plex uses for media
       - /mnt/storage/plex/media:/data
+
+  gluetun:
+    image: qmcgaw/gluetun:v3
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - 8888:8888/tcp # HTTP proxy
+      - 8388:8388/tcp # Shadowsocks
+      - 8388:8388/udp # Shadowsocks
+      - 8081:8081     # Mapped for qBittorrent Web UI
+      - 49906:49906/tcp # airvpn port forwarding
+      - 49906:49906/udp # airvpn port forwarding
+    environment:
+      - VPN_SERVICE_PROVIDER=airvpn
+      - SERVER_COUNTRIES=Netherlands
+      - FIREWALL_OUTBOUND_SUBNETS=172.60.0.0/24
+      - FIREWALL_VPN_INPUT_PORTS=49906
+      - VPN_IPV6=off 
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
+    volumes:
+      - /mnt/storage/docker/data/gluetun:/gluetun
+    restart: unless-stopped
+    networks:
+      yams_network:
+        ipv4_address: 172.60.0.2
+
+  # ==========================================
+  # MEDIA STACK (Routing through Gluetun)
+  # ==========================================
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:4.6.3
+    container_name: qbittorrent
+    env_file:
+      - .env
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - WEBUI_PORT=8081
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /mnt/storage/plex/media:/data
+      - /mnt/storage/docker/data/qbittorrent:/config
+    restart: unless-stopped
+    network_mode: service:gluetun
+    depends_on:
+      - gluetun
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr
+    container_name: sonarr
+    env_file:
+      - .env
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /mnt/storage/plex/media:/data
+      - /mnt/storage/docker/data/sonarr:/config
+    ports:
+      - 8011:8989
+    restart: unless-stopped
+    networks:
+      yams_network:
+        ipv4_address: 172.60.0.13
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr
+    container_name: prowlarr
+    env_file:
+      - .env
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /mnt/storage/docker/data/prowlarr:/config
+    ports:
+      - 8015:9696
+    restart: unless-stopped
+    networks:
+      yams_network:
+        ipv4_address: 172.60.0.17
+
+  # ==========================================
+  # IMMICH STACK
+  # ==========================================
+  immich-server:
+    container_name: immich_server
+    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
+    volumes:
+      - ${IMMICH_UPLOAD_LOCATION}:/data
+      - /etc/localtime:/etc/localtime:ro
+    env_file:
+      - .env
+    environment:
+      - DB_HOSTNAME=immich_postgres
+      - REDIS_HOSTNAME=immich_redis
+      - DB_USERNAME=${IMMICH_DB_USERNAME}
+      - DB_PASSWORD=${IMMICH_DB_PASSWORD}
+      - DB_DATABASE_NAME=${IMMICH_DB_DATABASE_NAME}
+    ports:
+      - '2283:2283'
+    depends_on:
+      immich_redis:
+        condition: service_started
+      immich_postgres:
+        condition: service_healthy
+    restart: always
+    healthcheck:
+      disable: false
+
+  immich-machine-learning:
+    container_name: immich_machine_learning
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
+    volumes:
+      - model-cache:/cache
+    env_file:
+      - .env
+    environment:
+      - DB_HOSTNAME=immich_postgres
+      - REDIS_HOSTNAME=immich_redis
+    restart: always
+    healthcheck:
+      disable: false
+
+  immich_redis:
+    container_name: immich_redis
+    image: docker.io/valkey/valkey:9@sha256:fb8d272e529ea567b9bf1302245796f21a2672b8368ca3fcb938ac334e613c8f
+    healthcheck:
+      test: redis-cli ping || exit 1
+    restart: always
+
+  immich_postgres:
+    container_name: immich_postgres
+    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23
+    environment:
+      POSTGRES_PASSWORD: ${IMMICH_DB_PASSWORD}
+      POSTGRES_USER: ${IMMICH_DB_USERNAME}
+      POSTGRES_DB: ${IMMICH_DB_DATABASE_NAME}
+      POSTGRES_INITDB_ARGS: '--data-checksums'
+      DB_STORAGE_TYPE: 'HDD'
+    volumes:
+      - ${IMMICH_DB_DATA_LOCATION}:/var/lib/postgresql/data
+    shm_size: 128mb
+    restart: always
+
+volumes:
+  model-cache:
+  
+networks:
+  yams_network:
+    name: yams_network
+    ipam:
+      config:
+        - subnet: 172.60.0.0/24
