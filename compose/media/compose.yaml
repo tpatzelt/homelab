@@ -1,0 +1,98 @@
+services:
+  plex:
+    container_name: plex
+    image: plexinc/pms-docker:1.42.2.10156-f737b826c
+    restart: unless-stopped
+    environment:
+      - ADVERTISE_IP=http://192.168.178.87:8009/
+    ports:
+      - 8009:32400/tcp
+      - 8324:8324/tcp
+      - 32469:32469/tcp
+      - 1900:1900/udp
+      - 32410:32410/udp
+      - 32412:32412/udp
+      - 32413:32413/udp
+      - 32414:32414/udp
+    hostname: lindus
+    volumes:
+      - /mnt/storage/docker/data/plex/config:/config
+      - /mnt/storage/plex/transcode:/transcode
+      - /mnt/storage/plex/media:/data
+      
+  gluetun:
+    image: qmcgaw/gluetun:v3
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - 8888:8888/tcp # HTTP proxy
+      - 8388:8388/tcp # Shadowsocks
+      - 8388:8388/udp # Shadowsocks
+      - 8081:8081     # Mapped for qBittorrent Web UI
+      - 49906:49906/tcp # airvpn port forwarding
+      - 49906:49906/udp # airvpn port forwarding
+    environment:
+      - VPN_SERVICE_PROVIDER=airvpn
+      - SERVER_COUNTRIES=Netherlands
+      - FIREWALL_OUTBOUND_SUBNETS=172.60.0.0/24
+      - FIREWALL_VPN_INPUT_PORTS=49906
+      - VPN_IPV6=off 
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
+    volumes:
+      - /mnt/storage/docker/data/gluetun:/gluetun
+    restart: unless-stopped
+    networks:
+      gluetun_network:
+        ipv4_address: 172.60.0.2
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:4.6.3
+    container_name: qbittorrent
+    environment:
+      - WEBUI_PORT=8081
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /mnt/storage/plex/media:/data
+      - /mnt/storage/docker/data/qbittorrent:/config
+    restart: unless-stopped
+    network_mode: service:gluetun
+    depends_on:
+      - gluetun
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr
+    container_name: sonarr
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /mnt/storage/plex/media:/data
+      - /mnt/storage/docker/data/sonarr:/config
+    ports:
+      - 8011:8989
+    restart: unless-stopped
+    networks:
+      gluetun_network:
+        ipv4_address: 172.60.0.13
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr
+    container_name: prowlarr
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /mnt/storage/docker/data/prowlarr:/config
+    ports:
+      - 8015:9696
+    restart: unless-stopped
+    networks:
+      gluetun_network:
+        ipv4_address: 172.60.0.17
+  
+networks:
+  gluetun_network:
+    name: gluetun_network
+    ipam:
+      config:
+        - subnet: 172.60.0.0/24
