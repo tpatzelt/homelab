@@ -1,0 +1,47 @@
+version: 2
+
+backends:
+  backup-hdd:
+    type: local
+    path: /mnt/backup/restic-backups
+    key: ${RESTIC_PASSWORD}
+
+global:
+  forget:
+    keep-last: 5
+    keep-weekly: 8
+    keep-monthly: 12
+    keep-yearly: 5
+
+locations:
+  my-data:
+    from: /mnt/storage/data
+    to: backup-hdd
+    forget: prune 
+
+  docker-data:
+    from: /mnt/storage/docker
+    to: backup-hdd
+    forget: prune 
+    hooks:
+      before:
+        - echo "Generating list of containers to stop..."
+        - docker ps --format '{{.Names}}' | grep -vE '^(pihole)$' > /tmp/backup_containers.list
+        - if [ -s /tmp/backup_containers.list ]; then docker stop $(cat /tmp/backup_containers.list); fi
+      
+      after:
+        - if [ -s /tmp/backup_containers.list ]; then docker start $(cat /tmp/backup_containers.list) || true; fi
+        - sleep 5
+        - if [ -s /tmp/backup_containers.list ]; then docker start $(cat /tmp/backup_containers.list); fi
+        - rm -f /tmp/backup_containers.list
+      
+      failure:
+        - if [ -s /tmp/backup_containers.list ]; then docker start $(cat /tmp/backup_containers.list) || true; fi
+        - sleep 5
+        - if [ -s /tmp/backup_containers.list ]; then docker start $(cat /tmp/backup_containers.list); fi
+        - rm -f /tmp/backup_containers.list
+
+  secrets:
+    from: /home/tim/coding/homelab/secrets
+    to: backup-hdd
+    forget: prune
