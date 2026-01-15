@@ -42,8 +42,6 @@ services:
       - FIREWALL_OUTBOUND_SUBNETS=172.60.0.0/24
       - FIREWALL_VPN_INPUT_PORTS=49906
       - VPN_IPV6=off 
-    sysctls:
-      - net.ipv6.conf.all.disable_ipv6=1
     volumes:
       - /mnt/storage/docker/data/gluetun:/gluetun
     restart: unless-stopped
