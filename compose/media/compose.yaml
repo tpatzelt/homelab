@@ -2,9 +2,12 @@ services:
   plex:
     container_name: plex
     image: plexinc/pms-docker:1.42.2.10156-f737b826c
+    env_file: ./.env
     restart: unless-stopped
     environment:
       - ADVERTISE_IP=http://192.168.178.87:8009/
+      - PLEX_UID=${PUID}
+      - PLEX_GID=${PGID}
     ports:
       - 8009:32400/tcp
       - 8324:8324/tcp
@@ -22,6 +25,7 @@ services:
       
   gluetun:
     image: qmcgaw/gluetun:v3
+    env_file: ./.env
     container_name: gluetun
     cap_add:
       - NET_ADMIN
@@ -32,8 +36,6 @@ services:
       - 8388:8388/tcp # Shadowsocks
       - 8388:8388/udp # Shadowsocks
       - 8081:8081     # Mapped for qBittorrent Web UI
-      - 49906:49906/tcp # airvpn port forwarding
-      - 49906:49906/udp # airvpn port forwarding
     environment:
       - VPN_SERVICE_PROVIDER=airvpn
       - SERVER_COUNTRIES=Netherlands
@@ -52,6 +54,7 @@ services:
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:4.6.3
     container_name: qbittorrent
+    env_file: ./.env
     environment:
       - WEBUI_PORT=8081
     volumes:
@@ -65,13 +68,14 @@ services:
 
   sonarr:
     image: lscr.io/linuxserver/sonarr
+    env_file: ./.env
     container_name: sonarr
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /mnt/storage/plex/media:/data
       - /mnt/storage/docker/data/sonarr:/config
     ports:
-      - 8011:8989
+      - 8004:8989
     restart: unless-stopped
     networks:
       gluetun_network:
@@ -80,6 +84,7 @@ services:
   prowlarr:
     image: lscr.io/linuxserver/prowlarr
     container_name: prowlarr
+    env_file: ./.env
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /mnt/storage/docker/data/prowlarr:/config

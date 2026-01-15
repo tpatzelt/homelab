@@ -2,6 +2,7 @@ services:
   dozzle:
     container_name: dozzle
     image: amir20/dozzle:v8.14.8
+    env_file: ./.env
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -14,6 +15,7 @@ services:
   pihole:
     container_name: pihole
     image: pihole/pihole:2025.11.1
+    env_file: ./.env
     restart: unless-stopped
     ports:
       - "53:53/tcp"
@@ -24,6 +26,8 @@ services:
       PIHOLE_DNS_2: 8.8.4.4
       FTLCONF_dns_listeningMode: 'all'
       FTLCONF_webserver_api_password: '${PIHOLE_FTLCONF_webserver_api_password}'
+      PIHOLE_UID: '${PUID}'
+      PIHOLE_GID: '${PGID}'
     dns:
       - 127.0.0.1
     volumes:
@@ -35,7 +39,8 @@ services:
 
   heimdall:
     container_name: heimdall
-    image: lscr.io/linuxserver/heimdall:latest
+    image: lscr.io/linuxserver/heimdall:2.7.6
+    env_file: ./.env
     restart: unless-stopped
     volumes:
       - /mnt/storage/docker/data/heimdall:/config
@@ -43,8 +48,9 @@ services:
       - 8008:80
 
   beszel:
-    image: henrygd/beszel:latest
+    image: henrygd/beszel:0.18.2
     container_name: beszel
+    env_file: ./.env
     restart: unless-stopped
     ports:
       - "8016:8090"
@@ -53,8 +59,9 @@ services:
       - /var/run/beszel-socket:/beszel_socket
 
   beszel-agent:
-    image: henrygd/beszel-agent:latest
+    image: henrygd/beszel-agent:0.18.2
     container_name: beszel-agent
+    env_file: ./.env
     restart: unless-stopped
     network_mode: host
     volumes:
