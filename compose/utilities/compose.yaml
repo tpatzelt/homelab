@@ -1,26 +1,27 @@
 services:
-  librespeed:
-    container_name: librespeed
-    image: ghcr.io/librespeed/speedtest:latest
-    restart: unless-stopped
-    environment:
-      MODE: standalone
-    ports:
-      - 8001:8080
-    volumes:
-      - /mnt/storage/docker/data/librespeed:/database
+  # librespeed:
+  #   container_name: librespeed
+  #   image: ghcr.io/librespeed/speedtest:latest
+  #   restart: unless-stopped
+  #   environment:
+  #     MODE: standalone
+  #   ports:
+  #     - 8001:8080
+  #   volumes:
+  #     - /mnt/storage/docker/data/librespeed:/database
 
-  yt-dlp-webui:
-    container_name: yt-dlp-webui
-    image: ghcr.io/marcopiovanello/yt-dlp-web-ui:latest
-    restart: unless-stopped
-    ports:
-      - 8006:3033
-    volumes:
-      - /mnt/storage/docker/data/yt-dlp-webui/downloads:/downloads
-      - /mnt/storage/docker/data/yt-dlp-webui/config:/config
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3033"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+  # yt-dlp-webui:
+  #   container_name: yt-dlp-webui
+  #   image: ghcr.io/marcopiovanello/yt-dlp-web-ui:latest
+  #   restart: unless-stopped
+  #   ports:
+  #     - 8006:3033
+  #   volumes:
+  #     - /mnt/storage/docker/data/yt-dlp-webui/downloads:/downloads
+  #     - /mnt/storage/docker/data/yt-dlp-webui/config:/config
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:3033"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
