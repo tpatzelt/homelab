@@ -37,7 +37,13 @@ services:
     environment:
       MEILI_ADDR: http://karakeep-meilisearch:7700
       BROWSER_WEB_URL: http://karakeep-chrome:9222
-      # OPENAI_API_KEY: ...
+      # OPENAI_BASE_URL: http://llama-cpp:8080/v1
+      # OPENAI_API_KEY: sk-dummy-key
+      # INFERENCE_TEXT_MODEL: Qwen2.5-Omni-3B-BF16.gguf
+      # INFERENCE_IMAGE_MODEL: Qwen2.5-Omni-3B-BF16.gguf
+      # INFERENCE_JOB_TIMEOUT_SECONDS: 3000
+      # INFERENCE_OUTPUT_SCHEMA: plain
+      # INFERENCE_ENABLE_AUTO_SUMMARIZATION: true
       DATA_DIR: /data 
 
   karakeep-chrome:
@@ -63,3 +69,14 @@ services:
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
     volumes:
       - /mnt/storage/docker/data/karakeep/meilisearch:/meili_data
+
+  # llama-cpp:
+  #   container_name: llama-cpp
+  #   image: ghcr.io/ggml-org/llama.cpp:server
+  #   restart: unless-stopped
+  #   command: >
+  #     -m /models/Qwen2.5-Omni-3B-BF16.gguf --port 8080 --host 0.0.0.0 -n 512
+  #   ports:
+  #     - 8018:8080
+  #   volumes:
+  #     - /mnt/storage/vllm-models:/models
