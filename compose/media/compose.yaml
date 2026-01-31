@@ -18,9 +18,9 @@ services:
       - 32414:32414/udp
     hostname: lindus
     volumes:
-      - /mnt/storage/docker/data/plex/config:/config
-      - /mnt/storage/plex/transcode:/transcode
-      - /mnt/storage/plex/media:/data
+      - /opt/dockerdata/plex/config:/config
+      - /opt/dockerdata/plex/transcode:/transcode
+      - /mnt/storage/plexmedia:/data
       - /mnt/storage/data/Media/musik/:/external_data/music
 
   gluetun:
@@ -51,7 +51,7 @@ services:
       - FIREWALL_VPN_INPUT_PORTS=49906
       - VPN_IPV6=off 
     volumes:
-      - /mnt/storage/docker/data/gluetun:/gluetun
+      - /opt/dockerdata/gluetun:/gluetun
     restart: unless-stopped
     networks:
       - gluetun_network
@@ -66,8 +66,8 @@ services:
       - PGID=${PGID}
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /mnt/storage/docker/data/qbittorrent:/config
-      - /mnt/storage/plex/media:/data
+      - /opt/dockerdata/qbittorrent:/config
+      - /mnt/storage/plexmedia:/data
     restart: unless-stopped
     network_mode: service:gluetun
     depends_on:
@@ -82,8 +82,8 @@ services:
       - PGID=${PGID}
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /mnt/storage/docker/data/sonarr:/config
-      - /mnt/storage/plex/media:/data
+      - /opt/dockerdata/sonarr:/config
+      - /mnt/storage/plexmedia:/data
     restart: unless-stopped
     network_mode: service:gluetun
 
@@ -97,8 +97,8 @@ services:
       - PGID=${PGID}
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /mnt/storage/docker/data/radarr:/config
-      - /mnt/storage/plex/media:/data
+      - /opt/dockerdata/radarr:/config
+      - /mnt/storage/plexmedia:/data
     restart: unless-stopped
     network_mode: service:gluetun
 
@@ -112,8 +112,8 @@ services:
       - PGID=${PGID}
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /mnt/storage/docker/data/lidarr:/config
-      - /mnt/storage/plex/media:/data
+      - /opt/dockerdata/lidarr:/config
+      - /mnt/storage/plexmedia:/data
     restart: unless-stopped
     network_mode: service:gluetun
 
@@ -127,8 +127,8 @@ services:
       - PGID=${PGID}
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /mnt/storage/docker/data/bazarr:/config
-      - /mnt/storage/plex/media:/data
+      - /opt/dockerdata/bazarr:/config
+      - /mnt/storage/plexmedia:/data
     restart: unless-stopped
     network_mode: service:gluetun
 
@@ -142,7 +142,7 @@ services:
       - PGID=${PGID}
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /mnt/storage/docker/data/prowlarr:/config
+      - /opt/dockerdata/prowlarr:/config
     restart: unless-stopped
     network_mode: service:gluetun
 
@@ -153,7 +153,7 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
     volumes:
-      - /mnt/storage/docker/data/overseerr:/config
+      - /opt/dockerdata/overseerr:/config
     restart: unless-stopped
     network_mode: service:gluetun
 

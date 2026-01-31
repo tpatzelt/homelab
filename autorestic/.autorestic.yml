@@ -20,7 +20,7 @@ locations:
     forget: prune 
 
   docker-data:
-    from: /mnt/storage/docker
+    from: /opt/dockerdata
     to: backup-hdd
     forget: prune 
     hooks:

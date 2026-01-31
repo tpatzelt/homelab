@@ -31,7 +31,7 @@ services:
     dns:
       - 127.0.0.1
     volumes:
-      - /mnt/storage/docker/data/pihole/etc-pihole:/etc/pihole
+      - /opt/dockerdata/pihole:/etc/pihole
     cap_add:
       - NET_ADMIN
       - SYS_TIME
@@ -43,7 +43,7 @@ services:
     env_file: ./.env
     restart: unless-stopped
     volumes:
-      - /mnt/storage/docker/data/heimdall:/config
+      - /opt/dockerdata/heimdall:/config
     ports:
       - 8008:80
 
@@ -55,7 +55,7 @@ services:
     ports:
       - "8016:8090"
     volumes:
-      - /home/tim/.beszel_data:/beszel_data
+      - /opt/dockerdata/beszel_data:/beszel_data
       - /var/run/beszel-socket:/beszel_socket
 
   beszel-agent:
@@ -67,7 +67,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/run/beszel-socket:/beszel_socket
-      - /home/tim/.beszel_agent_data:/var/lib/beszel-agent
+      - /opt/dockerdata/beszel_agent_data:/var/lib/beszel-agent
       - /mnt/storage/.beszel:/extra-filesystems/sdb2__Storage:ro
     environment:
       PORT: 45876

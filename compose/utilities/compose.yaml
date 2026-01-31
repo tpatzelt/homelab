@@ -8,7 +8,7 @@ services:
   #   ports:
   #     - 8001:8080
   #   volumes:
-  #     - /mnt/storage/docker/data/librespeed:/database
+  #     - /opt/dockerdata/librespeed:/database
 
   # yt-dlp-webui:
   #   container_name: yt-dlp-webui
@@ -17,8 +17,8 @@ services:
   #   ports:
   #     - 8006:3033
   #   volumes:
-  #     - /mnt/storage/docker/data/yt-dlp-webui/downloads:/downloads
-  #     - /mnt/storage/docker/data/yt-dlp-webui/config:/config
+  #     - /opt/dockerdata/yt-dlp-webui/downloads:/downloads
+  #     - /opt/dockerdata/yt-dlp-webui/config:/config
   #   healthcheck:
   #     test: ["CMD", "curl", "-f", "http://localhost:3033"]
   #     interval: 30s
@@ -29,7 +29,7 @@ services:
     image: ghcr.io/karakeep-app/karakeep:${KARAKEEP_VERSION:-release}
     restart: unless-stopped
     volumes:
-      - /mnt/storage/docker/data/karakeep/data:/data
+      - /opt/dockerdata/karakeep/data:/data
     ports:
       - 8011:3000
     env_file:
@@ -68,7 +68,7 @@ services:
       MEILI_NO_ANALYTICS: "true"
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
     volumes:
-      - /mnt/storage/docker/data/karakeep/meilisearch:/meili_data
+      - /opt/dockerdata/karakeep/meilisearch:/meili_data
 
   # llama-cpp:
   #   container_name: llama-cpp

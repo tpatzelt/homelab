@@ -1,0 +1,17 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: always
+    ports:
+      - "8020:8020"
+    environment:
+      - DOMAIN=https://192.168.178.87:8020
+      - SIGNUPS_ALLOWED=true
+      - WEBSOCKET_ENABLED=true
+      - ROCKET_TLS={certs="/ssl/cert.pem",key="/ssl/key.pem"}
+      - ROCKET_PORT=8020
+      - ROCKET_ADDRESS=0.0.0.0
+    volumes:
+      - /opt/dockerdata/vaultwarden:/data
+      - /home/tim/coding/homelab/secrets/ssl:/ssl:ro
