@@ -3,15 +3,15 @@ services:
     image: vaultwarden/server:latest
     container_name: vaultwarden
     restart: always
-    ports:
-      - "8020:8020"
     environment:
-      - DOMAIN=https://192.168.178.87:8020
-      - SIGNUPS_ALLOWED=true
-      - WEBSOCKET_ENABLED=true
-      - ROCKET_TLS={certs="/ssl/cert.pem",key="/ssl/key.pem"}
-      - ROCKET_PORT=8020
-      - ROCKET_ADDRESS=0.0.0.0
+      DOMAIN: https://vaultwarden.tim-boo.com
+      SIGNUPS_ALLOWED: false
     volumes:
       - /opt/dockerdata/vaultwarden:/data
-      - /home/tim/coding/homelab/secrets/ssl:/ssl:ro
+    networks:
+      - caddy_network
+
+networks:
+  caddy_network:
+    external: true
+    name: caddy_network

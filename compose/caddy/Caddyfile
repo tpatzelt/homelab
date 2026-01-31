@@ -1,0 +1,107 @@
+{
+    acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+}
+
+*.tim-boo.com {
+    
+    @beszel host beszel.tim-boo.com
+    handle @beszel {
+        reverse_proxy beszel:8090
+    }
+
+    @dozzle host dozzle.tim-boo.com
+    handle @dozzle {
+        reverse_proxy dozzle:8080
+    }
+
+    @pihole host pihole.tim-boo.com
+    handle @pihole {
+        redir / /admin/
+        reverse_proxy https://pihole:443 {
+            transport http {
+                tls_insecure_skip_verify
+            }
+        }
+    }
+
+    @heimdall host heimdall.tim-boo.com
+    handle @heimdall {
+        reverse_proxy heimdall:80
+    }
+
+    @immich host immich.tim-boo.com
+    handle @immich {
+        reverse_proxy immich_server:2283
+    }
+
+    @karakeep host karakeep.tim-boo.com
+    handle @karakeep {
+        reverse_proxy karakeep:3000
+    }
+
+    @plex host plex.tim-boo.com
+    handle @plex {
+        reverse_proxy plex:32400 {
+            header_up X-Forwarded-Proto https
+        }
+    }
+
+    @qb host qbittorrent.tim-boo.com
+    handle @qb {
+        reverse_proxy gluetun:8081
+    }
+
+    @prowlarr host prowlarr.tim-boo.com
+    handle @prowlarr {
+        reverse_proxy gluetun:9696
+    }
+
+    @overseerr host overseerr.tim-boo.com
+    handle @overseerr {
+        reverse_proxy gluetun:5055
+    }
+
+    @sonarr host sonarr.tim-boo.com
+    handle @sonarr {
+        reverse_proxy gluetun:8989
+    }
+
+    @radarr host radarr.tim-boo.com
+    handle @radarr {
+        reverse_proxy gluetun:7878
+    }
+
+    @lidarr host lidarr.tim-boo.com
+    handle @lidarr {
+        reverse_proxy gluetun:8686
+    }
+
+    @bazarr host bazarr.tim-boo.com
+    handle @bazarr {
+        reverse_proxy gluetun:6767
+    }
+
+    @vault host vaultwarden.tim-boo.com
+    handle @vault {
+        reverse_proxy /notifications/hub/negotiate vaultwarden:80
+        reverse_proxy /notifications/hub vaultwarden:3012
+        reverse_proxy vaultwarden:80 {
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    @ytdlp host ytdlp.tim-boo.com
+    handle @ytdlp {
+        reverse_proxy yt-dlp-webui:3030
+    }
+
+    @librespeed host librespeed.tim-boo.com
+    handle @librespeed {
+        reverse_proxy librespeed:8080
+    }
+
+    # Catch-all
+    handle {
+        abort
+    }
+}

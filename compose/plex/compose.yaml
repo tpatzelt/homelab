@@ -1,0 +1,30 @@
+services:
+  plex:
+    container_name: plex
+    image: plexinc/pms-docker:1.42.2.10156-f737b826c
+    env_file: ./.env
+    restart: unless-stopped
+    environment:
+      - PLEX_UID=${PUID}
+      - PLEX_GID=${PGID}
+    # ports:
+    #   - 8324:8324/tcp
+    #   - 32469:32469/tcp
+    #   - 1900:1900/udp
+    #   - 32410:32410/udp
+    #   - 32412:32412/udp
+    #   - 32413:32413/udp
+    #   - 32414:32414/udp
+    hostname: lindus
+    volumes:
+      - /opt/dockerdata/plex/config:/config
+      - /opt/dockerdata/plex/transcode:/transcode
+      - /mnt/storage/plexmedia:/data
+      - /mnt/storage/data/Media/musik/:/external_data/music
+    networks:
+      - caddy_network
+
+networks:
+  caddy_network:
+    external: true
+    name: caddy_network

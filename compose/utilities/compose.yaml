@@ -5,8 +5,6 @@ services:
   #   restart: unless-stopped
   #   environment:
   #     MODE: standalone
-  #   ports:
-  #     - 8001:8080
   #   volumes:
   #     - /opt/dockerdata/librespeed:/database
 
@@ -14,24 +12,16 @@ services:
   #   container_name: yt-dlp-webui
   #   image: ghcr.io/marcopiovanello/yt-dlp-web-ui:latest
   #   restart: unless-stopped
-  #   ports:
-  #     - 8006:3033
   #   volumes:
   #     - /opt/dockerdata/yt-dlp-webui/downloads:/downloads
   #     - /opt/dockerdata/yt-dlp-webui/config:/config
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:3033"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
+
   karakeep:
     container_name: karakeep
     image: ghcr.io/karakeep-app/karakeep:${KARAKEEP_VERSION:-release}
     restart: unless-stopped
     volumes:
       - /opt/dockerdata/karakeep/data:/data
-    ports:
-      - 8011:3000
     env_file:
       - .env
     environment:
@@ -45,9 +35,12 @@ services:
       # INFERENCE_OUTPUT_SCHEMA: plain
       # INFERENCE_ENABLE_AUTO_SUMMARIZATION: true
       DATA_DIR: /data 
+    networks:
+      - default
+      - caddy_network
 
   karakeep-chrome:
-    container_name: karakeep-chrome 
+    container_name: karakeep-chrome
     image: gcr.io/zenika-hub/alpine-chrome:124
     restart: unless-stopped
     command:
@@ -70,13 +63,7 @@ services:
     volumes:
       - /opt/dockerdata/karakeep/meilisearch:/meili_data
 
-  # llama-cpp:
-  #   container_name: llama-cpp
-  #   image: ghcr.io/ggml-org/llama.cpp:server
-  #   restart: unless-stopped
-  #   command: >
-  #     -m /models/Qwen2.5-Omni-3B-BF16.gguf --port 8080 --host 0.0.0.0 -n 512
-  #   ports:
-  #     - 8018:8080
-  #   volumes:
-  #     - /mnt/storage/vllm-models:/models
+networks:
+  caddy_network:
+    external: true
+    name: caddy_network

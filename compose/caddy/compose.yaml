@@ -1,0 +1,23 @@
+services:
+  caddy:
+    image: caddy-cloudfare
+    build: .
+    restart: unless-stopped
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - /opt/dockerdata/caddy/data:/data
+      - /opt/dockerdata/caddy/config:/config
+    networks:
+      - caddy_network
+
+networks:
+  caddy_network:
+    name: caddy_network
+    driver: bridge

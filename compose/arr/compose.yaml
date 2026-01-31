@@ -1,28 +1,4 @@
 services:
-  plex:
-    container_name: plex
-    image: plexinc/pms-docker:1.42.2.10156-f737b826c
-    env_file: ./.env
-    restart: unless-stopped
-    environment:
-      - PLEX_UID=${PUID}
-      - PLEX_GID=${PGID}
-    ports:
-      - 8009:32400/tcp
-      - 8324:8324/tcp
-      - 32469:32469/tcp
-      - 1900:1900/udp
-      - 32410:32410/udp
-      - 32412:32412/udp
-      - 32413:32413/udp
-      - 32414:32414/udp
-    hostname: lindus
-    volumes:
-      - /opt/dockerdata/plex/config:/config
-      - /opt/dockerdata/plex/transcode:/transcode
-      - /mnt/storage/plexmedia:/data
-      - /mnt/storage/data/Media/musik/:/external_data/music
-
   gluetun:
     image: qmcgaw/gluetun:v3
     env_file: ./.env
@@ -35,26 +11,18 @@ services:
       - 8888:8888/tcp # HTTP proxy
       - 8388:8388/tcp # Shadowsocks
       - 8388:8388/udp # Shadowsocks
-      - 8081:8081     # qBittorrent Web UI
-      - 8015:9696     # Prowlarr  
-      - 8017:5055     # Overseerr
-      - 8004:8989     # Sonarr
-      - 8006:7878     # Radarr
-      - 8007:8686     # Lidarr
-      - 8010:6767     # Bazarr
-
-
     environment:
       - VPN_SERVICE_PROVIDER=airvpn
       - SERVER_COUNTRIES=Netherlands
       - FIREWALL_OUTBOUND_SUBNETS=172.60.0.0/24
       - FIREWALL_VPN_INPUT_PORTS=49906
-      - VPN_IPV6=off 
+      - VPN_IPV6=off
     volumes:
       - /opt/dockerdata/gluetun:/gluetun
     restart: unless-stopped
     networks:
       - gluetun_network
+      - caddy_network
 
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:4.6.3
@@ -87,7 +55,6 @@ services:
     restart: unless-stopped
     network_mode: service:gluetun
 
-
   radarr:
     image: lscr.io/linuxserver/radarr:6.0.4
     container_name: radarr
@@ -101,7 +68,6 @@ services:
       - /mnt/storage/plexmedia:/data
     restart: unless-stopped
     network_mode: service:gluetun
-
 
   lidarr:
     image: lscr.io/linuxserver/lidarr:3.1.0
@@ -117,7 +83,6 @@ services:
     restart: unless-stopped
     network_mode: service:gluetun
 
-
   bazarr:
     image: lscr.io/linuxserver/bazarr:1.5.4
     container_name: bazarr
@@ -131,7 +96,6 @@ services:
       - /mnt/storage/plexmedia:/data
     restart: unless-stopped
     network_mode: service:gluetun
-
 
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:2.3.0
@@ -157,20 +121,22 @@ services:
     restart: unless-stopped
     network_mode: service:gluetun
 
-
   snowflake-proxy:
-      image: containers.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake:latest
-      container_name: snowflake-proxy
-      restart: unless-stopped
-      network_mode: service:gluetun
-      depends_on:
-        - gluetun
-      # Optional: increasing logging to verify it is working behind the VPN
-      command: [ "-verbose", "-log", "/dev/stdout" ]
-  
+    image: containers.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake:latest
+    container_name: snowflake-proxy
+    restart: unless-stopped
+    network_mode: service:gluetun
+    depends_on:
+      - gluetun
+    command: [ "-verbose", "-log", "/dev/stdout" ]
+
 networks:
   gluetun_network:
     name: gluetun_network
     ipam:
       config:
         - subnet: 172.60.0.0/24
+
+  caddy_network:
+    external: true
+    name: caddy_network

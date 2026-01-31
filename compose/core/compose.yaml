@@ -6,11 +6,11 @@ services:
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    ports:
-      - 8002:8080
     environment:
       DOZZLE_ENABLE_ACTIONS: "true"
       DOZZLE_ENABLE_SHELL: "true"
+    networks:
+      - caddy_network
 
   pihole:
     container_name: pihole
@@ -18,9 +18,8 @@ services:
     env_file: ./.env
     restart: unless-stopped
     ports:
-      - "53:53/tcp"
-      - "53:53/udp"
-      - "8005:443/tcp"
+      - "53:53/tcp"      # Keep - DNS needs this
+      - "53:53/udp"      # Keep - DNS needs this
     environment:
       PIHOLE_DNS_1: 8.8.8.8
       PIHOLE_DNS_2: 8.8.4.4
@@ -36,6 +35,8 @@ services:
       - NET_ADMIN
       - SYS_TIME
       - SYS_NICE
+    networks:
+      - caddy_network
 
   heimdall:
     container_name: heimdall
@@ -44,19 +45,19 @@ services:
     restart: unless-stopped
     volumes:
       - /opt/dockerdata/heimdall:/config
-    ports:
-      - 8008:80
+    networks:
+      - caddy_network
 
   beszel:
     image: henrygd/beszel:0.18.2
     container_name: beszel
     env_file: ./.env
     restart: unless-stopped
-    ports:
-      - "8016:8090"
     volumes:
       - /opt/dockerdata/beszel_data:/beszel_data
       - /var/run/beszel-socket:/beszel_socket
+    networks:
+      - caddy_network
 
   beszel-agent:
     image: henrygd/beszel-agent:0.18.2
@@ -75,3 +76,7 @@ services:
       TOKEN: '${BESZEL_TOKEN}'
       HUB_URL: '${BESZEL_HUB_URL}'
       LISTEN: /beszel_socket/beszel.sock
+
+networks:
+  caddy_network:
+    external: true
