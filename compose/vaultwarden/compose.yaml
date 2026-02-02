@@ -1,11 +1,15 @@
 services:
   vaultwarden:
-    image: vaultwarden/server:latest
+    # Self-hosted Bitwarden-compatible password manager
+    image: vaultwarden/server:1.35.2
     container_name: vaultwarden
+    env_file: ./.env
     restart: always
     environment:
       DOMAIN: https://vaultwarden.tim-boo.com
       SIGNUPS_ALLOWED: false
+      # Uncomment to enable admin panel (generate token with: openssl rand -base64 48)
+      # ADMIN_TOKEN: ${VAULTWARDEN_ADMIN_TOKEN}
     volumes:
       - /opt/dockerdata/vaultwarden:/data
     networks:

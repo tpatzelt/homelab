@@ -31,7 +31,7 @@
 
     @immich host immich.tim-boo.com
     handle @immich {
-        reverse_proxy immich_server:2283
+        reverse_proxy immich-server:2283
     }
 
     @karakeep host karakeep.tim-boo.com
@@ -83,8 +83,7 @@
 
     @vault host vaultwarden.tim-boo.com
     handle @vault {
-        reverse_proxy /notifications/hub/negotiate vaultwarden:80
-        reverse_proxy /notifications/hub vaultwarden:3012
+        # Vaultwarden 1.29+ uses single port for all traffic including websockets
         reverse_proxy vaultwarden:80 {
             header_up X-Real-IP {remote_host}
         }

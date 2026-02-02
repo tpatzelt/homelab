@@ -13,16 +13,17 @@ services:
       - caddy_network
 
   pihole:
+    # Network-wide ad blocking DNS server
     container_name: pihole
     image: pihole/pihole:2025.11.1
     env_file: ./.env
     restart: unless-stopped
     ports:
-      - "53:53/tcp"      # Keep - DNS needs this
-      - "53:53/udp"      # Keep - DNS needs this
+      - "53:53/tcp"      # DNS TCP
+      - "53:53/udp"      # DNS UDP
     environment:
-      PIHOLE_DNS_1: 8.8.8.8
-      PIHOLE_DNS_2: 8.8.4.4
+      PIHOLE_DNS_1: 8.8.8.8      # Upstream DNS (Google)
+      PIHOLE_DNS_2: 8.8.4.4      # Upstream DNS fallback
       FTLCONF_dns_listeningMode: 'all'
       FTLCONF_webserver_api_password: '${PIHOLE_FTLCONF_webserver_api_password}'
       PIHOLE_UID: '${PUID}'
@@ -32,9 +33,9 @@ services:
     volumes:
       - /opt/dockerdata/pihole:/etc/pihole
     cap_add:
-      - NET_ADMIN
-      - SYS_TIME
-      - SYS_NICE
+      - NET_ADMIN   # Required for DHCP and network interface management
+      - SYS_TIME    # Required for time-based filtering rules
+      - SYS_NICE    # Allows setting process priorities for better performance
     networks:
       - caddy_network
 

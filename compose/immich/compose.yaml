@@ -1,21 +1,22 @@
 services:
   immich-server:
-    container_name: immich_server
+    # Self-hosted photo and video backup solution (Google Photos alternative)
+    container_name: immich-server
     image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
     env_file: ./.env
     volumes:
       - ${IMMICH_UPLOAD_LOCATION}:/data
       - /etc/localtime:/etc/localtime:ro
     environment:
-      - DB_HOSTNAME=immich_postgres
-      - REDIS_HOSTNAME=immich_redis
+      - DB_HOSTNAME=immich-postgres
+      - REDIS_HOSTNAME=immich-redis
       - DB_USERNAME=${IMMICH_DB_USERNAME}
       - DB_PASSWORD=${IMMICH_DB_PASSWORD}
       - DB_DATABASE_NAME=${IMMICH_DB_DATABASE_NAME}
     depends_on:
-      immich_redis:
+      immich-redis:
         condition: service_started
-      immich_postgres:
+      immich-postgres:
         condition: service_healthy
     restart: always
     healthcheck:
@@ -25,28 +26,31 @@ services:
       - caddy_network
 
   immich-machine-learning:
-    container_name: immich_machine_learning
+    # ML service for face recognition, object detection, and smart search
+    container_name: immich-machine-learning
     image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
     env_file: ./.env
     volumes:
       - model-cache:/cache
     environment:
-      - DB_HOSTNAME=immich_postgres
-      - REDIS_HOSTNAME=immich_redis
+      - DB_HOSTNAME=immich-postgres
+      - REDIS_HOSTNAME=immich-redis
     restart: always
     healthcheck:
       disable: false
 
-  immich_redis:
-    container_name: immich_redis
+  immich-redis:
+    # In-memory cache for Immich (using Valkey, a Redis fork)
+    container_name: immich-redis
     image: docker.io/valkey/valkey:9@sha256:fb8d272e529ea567b9bf1302245796f21a2672b8368ca3fcb938ac334e613c8f
     env_file: ./.env
     healthcheck:
       test: redis-cli ping || exit 1
     restart: always
 
-  immich_postgres:
-    container_name: immich_postgres
+  immich-postgres:
+    # PostgreSQL with vector extensions for Immich's ML features
+    container_name: immich-postgres
     image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23
     env_file: ./.env
     environment:
@@ -57,6 +61,7 @@ services:
       DB_STORAGE_TYPE: "SSD"
     volumes:
       - ${IMMICH_DB_DATA_LOCATION}:/var/lib/postgresql/data
+    # Shared memory size for PostgreSQL performance (especially for ML queries)
     shm_size: 128mb
     restart: always
 
