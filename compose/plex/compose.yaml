@@ -9,7 +9,8 @@ services:
       - PLEX_UID=${PUID}
       - PLEX_GID=${PGID}
     # Optional ports for local discovery and DLNA (uncomment if not using reverse proxy only)
-    # ports:
+    ports:
+        - 8009:32400/tcp   # Plex web interface and streaming
     #   - 8324:8324/tcp     # Roku companion
     #   - 32469:32469/tcp   # DLNA server
     #   - 1900:1900/udp     # DLNA/SSDP discovery

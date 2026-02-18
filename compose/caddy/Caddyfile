@@ -99,6 +99,11 @@
         reverse_proxy librespeed:8080
     }
 
+    @filebrowser host filebrowser.tim-boo.com
+    handle @filebrowser {
+        reverse_proxy filebrowser:80
+    }
+
     # Catch-all
     handle {
         abort
