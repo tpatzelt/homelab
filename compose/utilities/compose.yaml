@@ -56,6 +56,23 @@ services:
     volumes:
       - /opt/dockerdata/karakeep/meilisearch:/meili_data
 
+  ip-tracker:
+    container_name: ip-tracker
+    image: ghcr.io/tpatzelt/ip-tracker:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: ${TZ}
+      IP_TRACKER_INTERVAL_MINUTES: "720"
+    volumes:
+      - /opt/dockerdata/ip-tracker/data:/app/data
+    networks:
+      - default
+      - caddy_network
+
 networks:
   caddy_network:
     external: true

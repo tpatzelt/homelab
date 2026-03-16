@@ -17,7 +17,7 @@ Minimal, personal homelab configuration managed via Docker Compose.
 | Lidarr | `lidarr.tim-boo.com` | Music management |
 | Bazarr | `bazarr.tim-boo.com` | Subtitle management |
 | Prowlarr | `prowlarr.tim-boo.com` | Indexer management |
-| Overseerr | `overseerr.tim-boo.com` | Media requests |
+| Seerr | `seerr.tim-boo.com` | Media requests |
 | qBittorrent | `qbittorrent.tim-boo.com` | Torrent client (via VPN) |
 | **Photos** |||
 | Immich | `immich.tim-boo.com` | Photo/video backup (Google Photos alternative) |

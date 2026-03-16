@@ -1,0 +1,40 @@
+services:
+  jellyfin:
+    # Jellyfin media server (LinuxServer image)
+    container_name: jellyfin
+    image: lscr.io/linuxserver/jellyfin:latest
+    env_file: ./.env
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - JELLYFIN_PublishedServerUrl=${JELLYFIN_PublishedServerUrl}
+      - JELLYFIN_CACHE_DIR=${JELLYFIN_CACHE_DIR}
+    # Do NOT publish ports to the host — Jellyfin should be reachable only via reverse proxy
+    # (other services on the same Docker network can still reach it)
+    expose:
+      - "8096"
+      # - "8920"  # HTTPS (optional - handled by reverse proxy)
+    hostname: lindus
+    volumes:
+      - /opt/dockerdata/jellyfin/config:/config
+      - /opt/dockerdata/jellyfin/cache:/cache
+      - /mnt/storage/plexmedia:/media
+    # Enable access to host Intel iGPU for VA-API hardware acceleration
+    devices:
+      - /dev/dri:/dev/dri
+    # Add the render group so container user can access /dev/dri (host should have 'render' group)
+    # Use numeric GID for the render group to avoid name-resolution issues in Docker
+    group_add:
+      - "993"
+    # Uncomment to enable hardware acceleration via VA-API
+    # devices:
+    #   - /dev/dri:/dev/dri
+    networks:
+      - caddy_network
+
+networks:
+  caddy_network:
+    external: true
+    name: caddy_network
