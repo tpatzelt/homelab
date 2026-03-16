@@ -38,19 +38,12 @@
 		reverse_proxy karakeep:3000
 	}
 
-  @plex host plex.tim-boo.com
-  handle @plex {
-    reverse_proxy plex:32400 {
-      header_up X-Forwarded-Proto https
-    }
-  }
-
-  @jellyfin host jellyfin.tim-boo.com
-  handle @jellyfin {
-    reverse_proxy jellyfin:8096 {
-      header_up X-Forwarded-Proto https
-    }
-  }
+	@jellyfin host jellyfin.tim-boo.com
+	handle @jellyfin {
+		reverse_proxy jellyfin:8096 {
+		header_up X-Forwarded-Proto https
+		}
+	}
 
 	@qb host qbittorrent.tim-boo.com
 	handle @qb {
@@ -64,7 +57,7 @@
 
 	@seerr host seerr.tim-boo.com
 	handle @seerr {
-		reverse_proxy gluetun:5055
+		reverse_proxy seerr:5055
 	}
 
 	@sonarr host sonarr.tim-boo.com
