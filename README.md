@@ -6,26 +6,26 @@ Minimal, personal homelab configuration managed via Docker Compose.
 | Service | Subdomain | Description |
 |---------|-----------|-------------|
 | **Core** |||
-| Pi-hole | `pihole.dev.tim-boo.com` | Network-wide ad blocking DNS |
-| Dozzle | `dozzle.dev.tim-boo.com` | Real-time Docker log viewer |
-| Heimdall | `heimdall.dev.tim-boo.com` | Application dashboard |
-| Beszel | `beszel.dev.tim-boo.com` | Server monitoring |
+| Pi-hole | `pihole.dev.example.com` | Network-wide ad blocking DNS |
+| Dozzle | `dozzle.dev.example.com` | Real-time Docker log viewer |
+| Heimdall | `heimdall.dev.example.com` | Application dashboard |
+| Beszel | `beszel.dev.example.com` | Server monitoring |
 | **Media** |||
-| Plex | `plex.dev.tim-boo.com` | Media server |
-| Sonarr | `sonarr.dev.tim-boo.com` | TV show management |
-| Radarr | `radarr.dev.tim-boo.com` | Movie management |
-| Lidarr | `lidarr.dev.tim-boo.com` | Music management |
-| Bazarr | `bazarr.dev.tim-boo.com` | Subtitle management |
-| Prowlarr | `prowlarr.dev.tim-boo.com` | Indexer management |
-| Seerr | `seerr.dev.tim-boo.com` | Media requests |
-| qBittorrent | `qbittorrent.dev.tim-boo.com` | Torrent client (via VPN) |
+| Plex | `plex.dev.example.com` | Media server |
+| Sonarr | `sonarr.dev.example.com` | TV show management |
+| Radarr | `radarr.dev.example.com` | Movie management |
+| Lidarr | `lidarr.dev.example.com` | Music management |
+| Bazarr | `bazarr.dev.example.com` | Subtitle management |
+| Prowlarr | `prowlarr.dev.example.com` | Indexer management |
+| Seerr | `seerr.dev.example.com` | Media requests |
+| qBittorrent | `qbittorrent.dev.example.com` | Torrent client (via VPN) |
 | **Photos** |||
-| Immich | `immich.dev.tim-boo.com` | Photo/video backup (Google Photos alternative) |
+| Immich | `immich.dev.example.com` | Photo/video backup (Google Photos alternative) |
 | **Utilities** |||
-| Vaultwarden | `vaultwarden.dev.tim-boo.com` | Password manager (Bitwarden-compatible) |
-| Karakeep | `karakeep.dev.tim-boo.com` | Bookmark manager |
-| LibreSpeed | `librespeed.dev.tim-boo.com` | Speed test (disabled) |
-| yt-dlp | `ytdlp.dev.tim-boo.com` | Video downloader (disabled) |
+| Vaultwarden | `vaultwarden.dev.example.com` | Password manager (Bitwarden-compatible) |
+| Karakeep | `karakeep.dev.example.com` | Bookmark manager |
+| LibreSpeed | `librespeed.dev.example.com` | Speed test (disabled) |
+| yt-dlp | `ytdlp.dev.example.com` | Video downloader (disabled) |
 
 ## Architecture
 
