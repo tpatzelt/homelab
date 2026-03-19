@@ -1,6 +1,8 @@
 {
 	acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
-	order geoip first
+	geoip2 {
+		db_path /etc/caddy/GeoLite2-City.mmdb
+	}
 }
 
 *.dev.tim-boo.com {
@@ -131,11 +133,9 @@
 
 
 *.tim-boo.com {
-	geoip /etc/caddy/GeoLite2-City.mmdb
+	log_append client_country {geoip2.country_code}
+	log_append client_city {geoip2.city_name}
 
-	log_append client_country {geoip_country_code}
-	log_append client_city {geoip_city_name}
-	
 	log {
 		output file /var/log/caddy/wildcard-access.log {
 			roll_size 50mb

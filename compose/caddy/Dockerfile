@@ -1,11 +1,8 @@
-# Custom Caddy build with Cloudflare DNS module
-# Required for ACME DNS-01 challenge (wildcard certs without exposing port 80)
 FROM caddy:2.10.2-builder AS builder
 
 RUN xcaddy build \
     --with github.com/caddy-dns/cloudflare \
-    --with github.com/aablinov/caddy-geoip
-
+    --with github.com/zhangjiayin/caddy-geoip2
 
 FROM caddy:2.10.2
 
