@@ -12,9 +12,10 @@ services:
       - "443:443/udp"
     environment:
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      - CROWDSEC_BOUNCER_API_KEY=${CROWDSEC_BOUNCER_API_KEY}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
-      - ./GeoLite2-City.mmdb:/etc/caddy/GeoLite2-City.mmdb:ro 
+      - ./GeoLite2-City.mmdb:/etc/caddy/GeoLite2-City.mmdb
       - /opt/dockerdata/caddy/data:/data
       - /opt/dockerdata/caddy/config:/config
       - /opt/dockerdata/caddy/logs:/var/log/caddy 
@@ -27,18 +28,38 @@ services:
     container_name: goaccess
     restart: unless-stopped
     volumes:
-      - /opt/dockerdata/caddy/logs:/var/log/caddy:ro       # Read-only access to Caddy logs
-      - /opt/dockerdata/caddy/goaccess:/var/www/goaccess   # Write access for the HTML file
-      - ./GeoLite2-City.mmdb:/opt/GeoLite2-City.mmdb:ro 
+      - /opt/dockerdata/caddy/logs/wildcard-access-goaccess.log:/var/log/caddy/wildcard-access-goaccess.log:ro
+      - /opt/dockerdata/caddy/goaccess:/var/www/goaccess
+      - ./GeoLite2-City.mmdb:/opt/GeoLite2-City.mmdb:ro
     command: >
-      /var/log/caddy/wildcard-access.log
-      --log-format=CADDY
+      /var/log/caddy/wildcard-access-goaccess.log
+      --log-format='{"level":"%^","ts":"%dT%t.%^Z","logger":"%^","msg":"%^","request":{"remote_ip":"%h","remote_port":"%^","client_ip":"%^","proto":"%H","method":"%m","host":"%v","uri":"%U"},"bytes_read":%^,"user_id":"%^","duration":%^,"size":%b,"status":%s,"client_city":"%^","client_country":"%^"}'
+      --date-format=%Y-%m-%d 
+      --time-format=%H:%M:%S
+      --double-decode
+      --no-query-string
+      --invalid-requests=/tmp/invalid.log
       --real-time-html
       --port=7890
       --ws-url=wss://goaccess.dev.tim-boo.com:443/ws
       --origin=https://goaccess.dev.tim-boo.com
-      --geoip-database=/opt/GeoLite2-City.mmdb  
+      --geoip-database=/opt/GeoLite2-City.mmdb
       -o /var/www/goaccess/index.html
+    networks:
+      - caddy_network
+
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: crowdsec
+    restart: unless-stopped
+    environment:
+      - GID=1000
+      - COLLECTIONS=crowdsecurity/caddy crowdsecurity/base-http-scenarios crowdsecurity/http-cve crowdsecurity/linux
+    volumes:
+      - /opt/dockerdata/crowdsec/config:/etc/crowdsec
+      - /opt/dockerdata/crowdsec/data:/var/lib/crowdsec/data
+      - /opt/dockerdata/caddy/logs:/var/log/caddy:ro   # same log mount as goaccess
+      - /var/log:/var/log/host:ro                       # for linux/sshd scenarios
     networks:
       - caddy_network
 

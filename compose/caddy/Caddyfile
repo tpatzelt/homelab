@@ -1,7 +1,19 @@
 {
 	acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
 	geoip2 {
-		db_path /etc/caddy/GeoLite2-City.mmdb
+		databaseDirectory "/etc/caddy/"
+		editionID         "GeoLite2-City"
+	}
+	order geoip2_vars first
+	order crowdsec first
+	crowdsec {
+		api_url http://crowdsec:8080
+		api_key {env.CROWDSEC_BOUNCER_API_KEY}
+		ticker_interval 15s
+	}
+
+	servers {
+		trusted_proxies static private_ranges
 	}
 }
 
@@ -44,7 +56,7 @@
 	@jellyfin host jellyfin.dev.tim-boo.com
 	handle @jellyfin {
 		reverse_proxy jellyfin:8096 {
-		header_up X-Forwarded-Proto https
+			header_up X-Forwarded-Proto https
 		}
 	}
 
@@ -131,8 +143,13 @@
 	}
 }
 
-
 *.tim-boo.com {
+	geoip2_vars trusted_proxies
+
+	route {
+		crowdsec
+	}
+
 	log_append client_country {geoip2.country_code}
 	log_append client_city {geoip2.city_name}
 
@@ -141,13 +158,24 @@
 			roll_size 50mb
 			roll_keep 5
 		}
-		# Wrap the standard JSON output and rename the IP field
+		format json {
+			time_format iso8601
+		}
+	}
+
+	log {
+		output file /var/log/caddy/wildcard-access-goaccess.log {
+			roll_size 50mb
+			roll_keep 5
+		}
 		format filter {
 			wrap json {
 				time_format iso8601
 			}
 			fields {
-				request>remote_ip rename client_ip
+				request>headers delete
+				resp_headers delete
+				request>tls delete
 			}
 		}
 	}
@@ -178,5 +206,4 @@
 	handle {
 		abort
 	}
-
 }

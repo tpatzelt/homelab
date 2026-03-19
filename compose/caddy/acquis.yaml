@@ -1,0 +1,10 @@
+---
+filenames:
+  - /var/log/caddy/wildcard-access.log
+labels:
+  type: caddy
+---
+filenames:
+  - /var/log/host/auth.log
+labels:
+  type: syslog
