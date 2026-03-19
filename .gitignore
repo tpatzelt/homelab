@@ -1,5 +1,5 @@
 .github/
-.env
+*.env
+!*.env.example
 .autorestic.lock.yml
-secrets/
 /compose/caddy/GeoLite2-City.mmdb
