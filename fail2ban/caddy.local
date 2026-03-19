@@ -1,0 +1,14 @@
+[caddy-json]
+enabled  = true
+backend  = auto   
+port     = http,https
+filter   = caddy-json
+# Point this to the absolute path of the Caddy log on your HOST machine
+logpath  = /opt/dockerdata/caddy/logs/wildcard-access.log
+maxretry = 5
+findtime = 600    # 10 minutes
+bantime  = 3600   # 1 hour
+
+# Because Caddy is in Docker, Fail2Ban needs to route the ban to the DOCKER-USER iptables chain.
+# (Standard iptables bans sometimes get bypassed by Docker's networking).
+action = iptables-allports[name=caddy, chain=DOCKER-USER]

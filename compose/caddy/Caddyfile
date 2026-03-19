@@ -143,7 +143,9 @@
 		}
 		# Wrap the standard JSON output and rename the IP field
 		format filter {
-			wrap json
+			wrap json {
+				time_format iso8601
+			}
 			fields {
 				request>remote_ip rename client_ip
 			}
