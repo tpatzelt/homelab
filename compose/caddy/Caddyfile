@@ -1,16 +1,11 @@
 {
 	acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
-	geoip2 {
-		databaseDirectory "/etc/caddy/"
-		editionID         "GeoLite2-City"
-	}
-	order geoip2_vars first
-	order crowdsec first
 	crowdsec {
 		api_url http://crowdsec:8080
 		api_key {env.CROWDSEC_BOUNCER_API_KEY}
 		ticker_interval 15s
 	}
+	order crowdsec first
 
 	servers {
 		trusted_proxies static private_ranges
@@ -144,43 +139,17 @@
 }
 
 *.tim-boo.com {
-	geoip2_vars trusted_proxies
-
 	route {
 		crowdsec
 	}
-
-	log_append client_country {geoip2.country_code}
-	log_append client_city {geoip2.city_name}
 
 	log {
 		output file /var/log/caddy/wildcard-access.log {
 			roll_size 50mb
 			roll_keep 5
 		}
-		format json {
-			time_format iso8601
-		}
 	}
 
-	log {
-		output file /var/log/caddy/wildcard-access-goaccess.log {
-			roll_size 50mb
-			roll_keep 5
-		}
-		format filter {
-			wrap json {
-				time_format iso8601
-			}
-			fields {
-				request>headers delete
-				resp_headers delete
-				request>tls delete
-			}
-		}
-	}
-
-	# 2. Global Security Headers (Applies to both Jellyfin and Seerr)
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
 		X-Frame-Options "SAMEORIGIN"
@@ -190,13 +159,11 @@
 		-Server # Hides Caddy from scanners
 	}
 
-	# 3. Jellyfin
 	@jellyfin host jellyfin.tim-boo.com
 	handle @jellyfin {
 		reverse_proxy jellyfin:8096
 	}
 
-	# 4. Overseerr / Jellyseerr
 	@seerr host seerr.tim-boo.com
 	handle @seerr {
 		reverse_proxy seerr:5055

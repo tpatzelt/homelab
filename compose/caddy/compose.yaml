@@ -15,11 +15,14 @@ services:
       - CROWDSEC_BOUNCER_API_KEY=${CROWDSEC_BOUNCER_API_KEY}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
-      - ./GeoLite2-City.mmdb:/etc/caddy/GeoLite2-City.mmdb
       - /opt/dockerdata/caddy/data:/data
       - /opt/dockerdata/caddy/config:/config
-      - /opt/dockerdata/caddy/logs:/var/log/caddy 
+      - /opt/dockerdata/caddy/logs:/var/log/caddy
       - /opt/dockerdata/caddy/goaccess:/var/www/goaccess  
+
+    depends_on:
+      crowdsec:
+        condition: service_healthy
     networks:
       - caddy_network
 
@@ -28,22 +31,18 @@ services:
     container_name: goaccess
     restart: unless-stopped
     volumes:
-      - /opt/dockerdata/caddy/logs/wildcard-access-goaccess.log:/var/log/caddy/wildcard-access-goaccess.log:ro
+      - /opt/dockerdata/caddy/logs/:/var/log/caddy:ro
       - /opt/dockerdata/caddy/goaccess:/var/www/goaccess
       - ./GeoLite2-City.mmdb:/opt/GeoLite2-City.mmdb:ro
     command: >
-      /var/log/caddy/wildcard-access-goaccess.log
-      --log-format='{"level":"%^","ts":"%dT%t.%^Z","logger":"%^","msg":"%^","request":{"remote_ip":"%h","remote_port":"%^","client_ip":"%^","proto":"%H","method":"%m","host":"%v","uri":"%U"},"bytes_read":%^,"user_id":"%^","duration":%^,"size":%b,"status":%s,"client_city":"%^","client_country":"%^"}'
-      --date-format=%Y-%m-%d 
-      --time-format=%H:%M:%S
-      --double-decode
-      --no-query-string
-      --invalid-requests=/tmp/invalid.log
+      /var/log/caddy/wildcard-access.log
+      --log-format=CADDY
       --real-time-html
       --port=7890
       --ws-url=wss://goaccess.dev.tim-boo.com:443/ws
       --origin=https://goaccess.dev.tim-boo.com
       --geoip-database=/opt/GeoLite2-City.mmdb
+      --enable-debug
       -o /var/www/goaccess/index.html
     networks:
       - caddy_network
@@ -60,6 +59,12 @@ services:
       - /opt/dockerdata/crowdsec/data:/var/lib/crowdsec/data
       - /opt/dockerdata/caddy/logs:/var/log/caddy:ro   # same log mount as goaccess
       - /var/log:/var/log/host:ro                       # for linux/sshd scenarios
+    healthcheck:
+      test: ["CMD", "cscli", "version"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - caddy_network
 
