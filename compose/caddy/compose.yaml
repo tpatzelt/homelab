@@ -14,8 +14,31 @@ services:
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./GeoLite2-City.mmdb:/etc/caddy/GeoLite2-City.mmdb:ro 
       - /opt/dockerdata/caddy/data:/data
       - /opt/dockerdata/caddy/config:/config
+      - /opt/dockerdata/caddy/logs:/var/log/caddy 
+      - /opt/dockerdata/caddy/goaccess:/var/www/goaccess  
+    networks:
+      - caddy_network
+
+  goaccess:
+    image: allinurl/goaccess
+    container_name: goaccess
+    restart: unless-stopped
+    volumes:
+      - /opt/dockerdata/caddy/logs:/var/log/caddy:ro       # Read-only access to Caddy logs
+      - /opt/dockerdata/caddy/goaccess:/var/www/goaccess   # Write access for the HTML file
+      - ./GeoLite2-City.mmdb:/opt/GeoLite2-City.mmdb:ro 
+    command: >
+      /var/log/caddy/wildcard-access.log
+      --log-format=CADDY
+      --real-time-html
+      --port=7890
+      --ws-url=wss://goaccess.dev.tim-boo.com:443/ws
+      --origin=https://goaccess.dev.tim-boo.com
+      --geoip-database=/opt/GeoLite2-City.mmdb  
+      -o /var/www/goaccess/index.html
     networks:
       - caddy_network
 

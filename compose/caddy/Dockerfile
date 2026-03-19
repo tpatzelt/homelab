@@ -3,7 +3,9 @@
 FROM caddy:2.10.2-builder AS builder
 
 RUN xcaddy build \
-    --with github.com/caddy-dns/cloudflare
+    --with github.com/caddy-dns/cloudflare \
+    --with github.com/aablinov/caddy-geoip
+
 
 FROM caddy:2.10.2
 

@@ -2,3 +2,4 @@
 .env
 .autorestic.lock.yml
 secrets/
+/compose/caddy/GeoLite2-City.mmdb
