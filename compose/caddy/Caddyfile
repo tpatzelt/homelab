@@ -132,6 +132,11 @@
 		reverse_proxy filebrowser:80
 	}
 
+	@navidrome host navidrome.dev.tim-boo.com
+	handle @navidrome {
+		reverse_proxy navidrome:4533
+	}
+
 	# Catch-all
 	handle {
 		abort

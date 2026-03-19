@@ -1,0 +1,22 @@
+services:
+    navidrome:
+      image: deluan/navidrome:latest
+      container_name: navidrome
+      user: "${PUID}:${PGID}"
+      restart: unless-stopped
+      env_file: ./.env
+      environment:
+        - PUID=${PUID}
+        - PGID=${PGID}
+        # - ND_LOGLEVEL=debug
+      volumes:
+        - "/opt/dockerdata/navidrome/data:/data"
+        - "/mnt/storage/data/Media/musik/:/music/storage:ro"
+        - "/mnt/storage/plexmedia/music/:/music/torrent:ro"
+      networks:
+        - caddy_network
+
+networks:
+  caddy_network:
+    external: true
+    name: caddy_network
