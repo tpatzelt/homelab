@@ -1,0 +1,33 @@
+services:
+  annabel-rene-frontend:
+    image: ghcr.io/tpatzelt/annabel-rene-frontend:latest-root
+    container_name: annabel-rene-frontend
+    restart: unless-stopped
+    environment:
+      PUBLIC_SITE_URL: https://annabel-rene.dev.tim-boo.com
+      PB_INTERNAL_URL: http://annabel-rene-backend:8090
+      BOT_QUESTION: "Wie heißt die Braut mit Vornamen?"
+      SESSION_SECRET: ${ANNABEL_RENE_SESSION_SECRET}
+      PB_ADMIN_TOKEN: ${ANNABEL_RENE_PB_ADMIN_TOKEN}
+      BOT_ANSWER: ${ANNABEL_RENE_BOT_ANSWER}
+    depends_on:
+      annabel-rene-backend:
+        condition: service_healthy
+    networks:
+      - caddy_network
+
+  annabel-rene-backend:
+    image: ghcr.io/tpatzelt/annabel-rene-backend:latest
+    container_name: annabel-rene-backend
+    restart: unless-stopped
+    volumes:
+      - /opt/dockerdata/annabel-rene/pb_data:/pb/pb_data
+    ports:
+      - "127.0.0.1:8091:8090" # admin UI via SSH tunnel only
+    networks:
+      - caddy_network
+
+networks:
+  caddy_network:
+    external: true
+    name: caddy_network
