@@ -26,10 +26,18 @@ docker compose -f compose/<name>/compose.yaml down
 
 Startup order matters because of shared external networks and reverse-proxy dependencies: `caddy` → `core` → other stacks. `caddy_network` (external, bridge) must exist before any other stack is started (`docker network create caddy_network`).
 
-After editing `compose/caddy/Caddyfile`, reload/restart the `caddy` container to pick up changes (it's mounted, not baked into the image):
+After editing `compose/caddy/Caddyfile`, **force-recreate** the `caddy` container (it's mounted, not baked into the image):
 ```bash
-docker compose -f compose/caddy/compose.yaml exec caddy caddy reload --config /etc/caddy/Caddyfile
+docker compose -f compose/caddy/compose.yaml up -d --force-recreate caddy
 ```
+
+`caddy reload` and `docker restart` are **not** enough if the editor wrote the file atomically (write-temp-then-rename — most editors, `sed -i`, and Claude Code's Edit/Write tools all do this). Docker resolves a single-file bind mount to an *inode* at container-create time, so the rename leaves the container serving the old file. `caddy reload` then exits 0 and logs `adapted config to JSON` while re-reading the stale config — the failure is completely silent, and only shows up as the catch-all `abort` closing connections on the route you thought you just added.
+
+Check for it with:
+```bash
+diff <(docker exec caddy cat /etc/caddy/Caddyfile) compose/caddy/Caddyfile
+```
+Only reach for `caddy reload` when the file was edited in place (e.g. a shell append). The same trap applies to every other single-file bind mount in this repo — `compose/cloudflared/config.yml`, `compose/caddy/GeoLite2-City.mmdb`.
 
 There is no lint/test suite. "Validation" means: `docker compose config` for YAML/interpolation errors, and checking the Caddyfile matcher/host names against the compose service names.
 
@@ -39,14 +47,23 @@ There is no lint/test suite. "Validation" means: `docker compose config` for YAM
 - **caddy** — reverse proxy (custom-built image with Cloudflare DNS + CrowdSec bouncer plugins, see `compose/caddy/Dockerfile`), plus `goaccess` (log analytics UI) and `crowdsec` (intrusion detection feeding the Caddy bouncer). This is the only stack that binds host ports 80/443.
 - **core** — dozzle (log viewer), pihole (DNS), heimdall (dashboard), beszel/beszel-agent (monitoring; the agent runs with `network_mode: host`).
 - **arr** — `gluetun` (VPN, AirVPN/Netherlands) plus qbittorrent/sonarr/radarr/lidarr/bazarr/prowlarr, all attached via `network_mode: service:gluetun` so their traffic routes through the VPN tunnel. Only `gluetun` itself joins `caddy_network`, so Caddy reverse-proxies to `gluetun:<port>` for every *arr service, not to the service's own container name.
-- **immich**, **jellyfin**, **navidrome**, **filebrowser**, **seerr**, **vaultwarden**, **utilities** (karakeep + ip-tracker) — standalone media/utility stacks.
+- **cloudflared** — a locally-managed Cloudflare Tunnel (ingress rules in `compose/cloudflared/config.yml`, credential at `/opt/dockerdata/cloudflared/creds.json`). This is the only way anything in this homelab is reachable from the internet; no router ports are forwarded. It deliberately proxies to `https://caddy:443` rather than straight to an app container, so tunnelled traffic still passes CrowdSec, the security headers, and the access log. It has no `.env` — a locally-managed tunnel carries no env-var secrets, so it intentionally skips the `secrets/` symlink convention below.
+- **immich**, **jellyfin**, **navidrome**, **filebrowser**, **seerr**, **vaultwarden**, **utilities** (karakeep + ip-tracker), **annabel-rene** (wedding site) — standalone media/utility stacks.
 
 ### Networking
 Two Docker networks tie everything together:
 - `caddy_network` (external, created once, referenced by every stack that needs a public route) — services reachable behind Caddy attach here.
 - `gluetun_network` (defined in `arr`, subnet `172.60.0.0/24`) — VPN-routed *arr services live behind this; `gluetun` bridges it to `caddy_network`.
 
-Routing in `compose/caddy/Caddyfile` is host-matcher based against a wildcard cert: `*.dev.tim-boo.com` for internal/dev-exposed services, `*.tim-boo.com` for the small subset exposed on the public domain (currently jellyfin, seerr). Every block ends in a catch-all `abort`. CrowdSec is wired in globally (`order crowdsec first`, `route { crowdsec }`) and access logs go to `/var/log/caddy/wildcard-access.log`, which both `goaccess` and `crowdsec`'s log-based scenarios read.
+Routing in `compose/caddy/Caddyfile` is host-matcher based against a wildcard cert: `*.dev.tim-boo.com` for internal services, `*.tim-boo.com` for the public domain. Every block ends in a catch-all `abort`. CrowdSec is wired in globally (`order crowdsec first`, `route { crowdsec }`) and access logs go to `/var/log/caddy/wildcard-access.log`, which both `goaccess` and `crowdsec`'s log-based scenarios read.
+
+A Caddyfile route existing does **not** mean a host is reachable — DNS decides that, and the two wildcards resolve very differently:
+- `*.dev.tim-boo.com` is a wildcard A record to the LAN IP `192.168.178.87`, so it only works from inside the LAN.
+- `*.tim-boo.com` has **no** wildcard record. Only `annabel-rene.tim-boo.com` exists, as a proxied CNAME to the tunnel. The `jellyfin.tim-boo.com` and `seerr.tim-boo.com` handles have no DNS records at all and are currently dead config — don't assume they work.
+
+To expose a new public host: add an ingress rule in `compose/cloudflared/config.yml`, a `handle` block in the `*.tim-boo.com` Caddy block, and run `cloudflared tunnel route dns homelab <host>`. Two constraints to respect — Cloudflare's ToS §2.8 forbids proxying video streaming over the free CDN (so Jellyfin must not go through the tunnel), and the free plan rejects request bodies over 100 MB at the edge, before they ever reach Caddy or any log.
+
+Client IPs survive the tunnel: cloudflared appears only as `remote_ip` in the access log, while `client_ip` holds the real visitor (Caddy trusts `X-Forwarded-For` via the global `trusted_proxies static private_ranges`). CrowdSec's `caddy-logs` parser reads `client_ip`, so bans land on real clients rather than on the tunnel container.
 
 ### Secrets and env files
 Real env files live in `secrets/*.env` (gitignored) and each `compose/<name>/.env` is a **symlink** into `secrets/`, e.g. `compose/caddy/.env -> ../../secrets/.caddy.env`. `secrets/*.env.example` are the checked-in templates — when adding a new stack, add both the example and wire up the symlink. Note the `navidrome` stack's secret is named `.navidrom.env` (typo, kept for consistency with the existing symlink — don't silently "fix" it without repointing the symlink too).
