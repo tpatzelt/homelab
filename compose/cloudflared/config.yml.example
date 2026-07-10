@@ -1,0 +1,16 @@
+# Copy to config.yml and fill in the tunnel UUID + hostnames.
+# The real config.yml is gitignored (tunnel UUID + hostnames stay private).
+tunnel: your-tunnel-uuid
+credentials-file: /etc/cloudflared/creds.json
+
+# Terminate at Caddy rather than the app container so public traffic still passes
+# CrowdSec, the security-header block, and wildcard-access.log.
+# originServerName sets the TLS SNI so Caddy presents its wildcard cert,
+# which cloudflared then validates normally (no noTLSVerify required).
+ingress:
+  - hostname: myapp.example.com
+    service: https://caddy:443
+    originRequest:
+      originServerName: myapp.example.com
+
+  - service: http_status:404

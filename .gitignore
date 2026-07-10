@@ -3,3 +3,4 @@
 !*.env.example
 .autorestic.lock.yml
 /compose/caddy/GeoLite2-City.mmdb
+/compose/cloudflared/config.yml

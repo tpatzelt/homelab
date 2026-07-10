@@ -4,7 +4,7 @@ services:
     container_name: annabel-rene-frontend
     restart: unless-stopped
     environment:
-      PUBLIC_SITE_URL: https://annabel-rene.tim-boo.com
+      PUBLIC_SITE_URL: ${ANNABEL_RENE_PUBLIC_SITE_URL}
       SESSION_SECRET: ${ANNABEL_RENE_SESSION_SECRET}
       ADMIN_PASSWORD: ${ANNABEL_RENE_ADMIN_PASSWORD}
       DATA_DIR: /data
