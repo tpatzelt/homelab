@@ -139,12 +139,7 @@
 
 	@annabel-rene host annabel-rene.dev.tim-boo.com
 	handle @annabel-rene {
-		handle /api/* {
-			reverse_proxy annabel-rene-backend:8090
-		}
-		handle {
-			reverse_proxy annabel-rene-frontend:4321
-		}
+		reverse_proxy annabel-rene-frontend:4321
 	}
 
 	# Catch-all
