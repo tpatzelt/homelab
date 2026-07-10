@@ -26,7 +26,7 @@ if ! mountpoint -q "$MOUNT_POINT"; then
 fi
 
 # 2. Run Autorestic
-source /home/tim/coding/secrets/.autorestic.env
+source /home/tim/coding/homelab/secrets/.autorestic.env
 /usr/local/bin/autorestic -c /home/tim/coding/homelab/autorestic/.autorestic.yml backup -a --verbose
 
 # 3. Script finishes -> 'trap' triggers cleanup() automatically

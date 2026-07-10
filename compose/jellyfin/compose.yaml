@@ -15,7 +15,6 @@ services:
     # (other services on the same Docker network can still reach it)
     expose:
       - "8096"
-      # - "8920"  # HTTPS (optional - handled by reverse proxy)
     hostname: lindus
     volumes:
       - /opt/dockerdata/jellyfin/config:/config
@@ -28,9 +27,6 @@ services:
     # Use numeric GID for the render group to avoid name-resolution issues in Docker
     group_add:
       - "993"
-    # Uncomment to enable hardware acceleration via VA-API
-    # devices:
-    #   - /dev/dri:/dev/dri
     networks:
       - caddy_network
 
