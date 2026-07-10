@@ -25,8 +25,10 @@ if ! mountpoint -q "$MOUNT_POINT"; then
     mount "$DEVICE" "$MOUNT_POINT"
 fi
 
-# 2. Run Autorestic
+# 2. Run Autorestic (set -a exports RESTIC_PASSWORD so the child process sees it)
+set -a
 source /home/tim/coding/homelab/secrets/.autorestic.env
+set +a
 /usr/local/bin/autorestic -c /home/tim/coding/homelab/autorestic/.autorestic.yml backup -a --verbose
 
 # 3. Script finishes -> 'trap' triggers cleanup() automatically
