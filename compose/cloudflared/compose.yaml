@@ -1,0 +1,25 @@
+services:
+  cloudflared:
+    # Locally-managed tunnel: ingress lives in ./config.yml, the tunnel
+    # credential is staged at /opt/dockerdata/cloudflared/creds.json.
+    # Image entrypoint is already `cloudflared --no-autoupdate`.
+    image: cloudflare/cloudflared:2026.7.1
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel --config /etc/cloudflared/config.yml --metrics 0.0.0.0:2000 run
+    volumes:
+      - ./config.yml:/etc/cloudflared/config.yml:ro
+      - /opt/dockerdata/cloudflared/creds.json:/etc/cloudflared/creds.json:ro
+    healthcheck:
+      test: ["CMD", "cloudflared", "tunnel", "--metrics", "127.0.0.1:2000", "ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - caddy_network
+
+networks:
+  caddy_network:
+    external: true
+    name: caddy_network

@@ -1,0 +1,14 @@
+tunnel: 7d95316f-bcc6-4980-a07b-c5a0f5f1e637
+credentials-file: /etc/cloudflared/creds.json
+
+# Terminate at Caddy rather than the app container so public traffic still passes
+# CrowdSec, the security-header block, and wildcard-access.log.
+# originServerName sets the TLS SNI so Caddy presents its *.tim-boo.com cert,
+# which cloudflared then validates normally (no noTLSVerify required).
+ingress:
+  - hostname: annabel-rene.tim-boo.com
+    service: https://caddy:443
+    originRequest:
+      originServerName: annabel-rene.tim-boo.com
+
+  - service: http_status:404

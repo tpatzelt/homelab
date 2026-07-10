@@ -179,6 +179,12 @@
 		reverse_proxy seerr:5055
 	}
 
+	# Reached only via the cloudflared tunnel (no public A record, no forwarded ports)
+	@annabel-rene host annabel-rene.tim-boo.com
+	handle @annabel-rene {
+		reverse_proxy annabel-rene-frontend:4321
+	}
+
 	# 5. Catch-all: Drop unhandled subdomains
 	handle {
 		abort
