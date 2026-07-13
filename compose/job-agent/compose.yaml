@@ -1,0 +1,11 @@
+services:
+  job-agent:
+    image: ghcr.io/tpatzelt/job-application-agent:latest
+    container_name: job-agent
+    restart: unless-stopped
+    env_file: ./.env
+    volumes:
+      - /opt/dockerdata/job-agent:/app/data
+    # Headless Chrome (botasaurus browser fallback) needs more shared
+    # memory than Docker's 64MB default.
+    shm_size: "1gb"
