@@ -1,105 +1,129 @@
 # homelab
-Minimal, personal homelab configuration managed via Docker Compose.
+
+Personal homelab infrastructure-as-config: Docker Compose stacks fronted by a
+Caddy reverse proxy on a single host. There is no application code or build
+step — everything is `compose.yaml` files, a Caddyfile, and env files.
+
+The real domain is kept out of the repo. Caddy reads it from the `DOMAIN` env
+var (`{$DOMAIN}` placeholders in the Caddyfile); `example.com` stands in for it
+below. Internal services live on `*.dev.example.com` (LAN-only wildcard DNS),
+public ones on `*.example.com` via a Cloudflare Tunnel.
 
 ## Services
 
-| Service | Subdomain | Description |
-|---------|-----------|-------------|
-| **Core** |||
-| Pi-hole | `pihole.dev.example.com` | Network-wide ad blocking DNS |
-| Dozzle | `dozzle.dev.example.com` | Real-time Docker log viewer |
-| Heimdall | `heimdall.dev.example.com` | Application dashboard |
-| Beszel | `beszel.dev.example.com` | Server monitoring |
-| **Media** |||
-| Plex | `plex.dev.example.com` | Media server |
-| Sonarr | `sonarr.dev.example.com` | TV show management |
-| Radarr | `radarr.dev.example.com` | Movie management |
-| Lidarr | `lidarr.dev.example.com` | Music management |
-| Bazarr | `bazarr.dev.example.com` | Subtitle management |
-| Prowlarr | `prowlarr.dev.example.com` | Indexer management |
-| Seerr | `seerr.dev.example.com` | Media requests |
-| qBittorrent | `qbittorrent.dev.example.com` | Torrent client (via VPN) |
-| **Photos** |||
-| Immich | `immich.dev.example.com` | Photo/video backup (Google Photos alternative) |
-| **Utilities** |||
-| Vaultwarden | `vaultwarden.dev.example.com` | Password manager (Bitwarden-compatible) |
-| Karakeep | `karakeep.dev.example.com` | Bookmark manager |
-| LibreSpeed | `librespeed.dev.example.com` | Speed test (disabled) |
-| yt-dlp | `ytdlp.dev.example.com` | Video downloader (disabled) |
+| Stack | Service | Subdomain | Description |
+|-------|---------|-----------|-------------|
+| **caddy** | Caddy | — | Reverse proxy, wildcard TLS via Cloudflare DNS-01, CrowdSec bouncer |
+| | GoAccess | `goaccess.dev.example.com` | Access-log analytics (GeoIP) |
+| | CrowdSec | — | Intrusion detection feeding the Caddy bouncer |
+| **core** | Pi-hole | `pihole.dev.example.com` | Network-wide ad-blocking DNS |
+| | Dozzle | `dozzle.dev.example.com` | Real-time Docker log viewer |
+| | Heimdall | `heimdall.dev.example.com` | Application dashboard |
+| | Beszel (+agent) | `beszel.dev.example.com` | Server monitoring |
+| **arr** | Gluetun | — | VPN gateway (AirVPN, WireGuard) |
+| | qBittorrent | `qbittorrent.dev.example.com` | Torrent client (via VPN) |
+| | Sonarr / Radarr / Lidarr | `sonarr.` / `radarr.` / `lidarr.dev.example.com` | TV / movie / music management (via VPN) |
+| | Bazarr / Prowlarr | `bazarr.` / `prowlarr.dev.example.com` | Subtitles / indexers (via VPN) |
+| **seerr** | Seerr | `seerr.dev.example.com` | Media requests |
+| **jellyfin** | Jellyfin | `jellyfin.dev.example.com` | Media server (LAN only — no tunnel, see below) |
+| **immich** | Immich | `immich.dev.example.com` | Photo/video backup |
+| **navidrome** | Navidrome | `navidrome.dev.example.com` | Music streaming (Subsonic API) |
+| **filebrowser** | File Browser | `filebrowser.dev.example.com` | Web file manager for `/mnt/storage/data` |
+| **vaultwarden** | Vaultwarden | `vaultwarden.dev.example.com` | Password manager (Bitwarden-compatible) |
+| **utilities** | Karakeep | `karakeep.dev.example.com` | Bookmark manager (+ Meilisearch, Chrome) |
+| | ip-tracker | `iptracker.dev.example.com` | Public-IP change tracker |
+| **cloudflared** | cloudflared | — | Cloudflare Tunnel — the only public ingress |
+| **annabel-rene** | Wedding site | `annabel-rene.example.com` | Public static site, served through the tunnel |
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                          Internet                                │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │
-                    ┌───────────▼───────────┐
-                    │   Caddy (port 443)    │
-                    │   Reverse Proxy       │
-                    │   Wildcard TLS        │
-                    └───────────┬───────────┘
-                                │
-           ┌────────────────────┼────────────────────┐
-           │                    │                    │
-   ┌───────▼───────┐    ┌───────▼───────┐    ┌───────▼───────┐
-   │ caddy_network │    │gluetun_network│    │   host/other  │
-   │               │    │    (VPN)      │    │               │
-   │ • Pi-hole     │    │ • qBittorrent │    │ • Beszel-agent│
-   │ • Dozzle      │    │ • Sonarr      │    │   (host net)  │
-   │ • Heimdall    │    │ • Radarr      │    │               │
-   │ • Beszel      │    │ • Lidarr      │    └───────────────┘
-   │ • Plex        │    │ • Bazarr      │
-   │ • Immich      │    │ • Prowlarr    │
-   │ • Vaultwarden │    │ • Overseerr   │
-   │ • Karakeep    │    │ • Snowflake   │
-   └───────────────┘    └───────────────┘
+                        Internet
+                            │
+              Cloudflare Tunnel (cloudflared)          ← no forwarded router ports
+                            │
+             ┌──────────────▼──────────────┐
+   LAN ─────►│      Caddy (80/443)         │
+             │  wildcard TLS · CrowdSec    │
+             │  security headers · logs    │
+             └──────────────┬──────────────┘
+                            │ caddy_network
+      ┌─────────────────────┼──────────────────────┐
+      │                     │                      │
+  most services         gluetun ◄─ gluetun_network │  beszel-agent
+  (pihole, immich,      (VPN)      qbittorrent,    │  (host network)
+  jellyfin, vault-                 sonarr, radarr, │
+  warden, …)                       lidarr, bazarr, │
+                                   prowlarr        │
 ```
 
-- **caddy_network**: Services exposed via reverse proxy
-- **gluetun_network**: Services routed through VPN (AirVPN)
-- All persistent data stored under `/opt/dockerdata/`
+- **caddy_network** (external, create once): everything reachable behind Caddy.
+- **gluetun_network**: *arr services run with `network_mode: service:gluetun`,
+  so all their traffic exits through the VPN. Caddy proxies to `gluetun:<port>`
+  for them, not to their container names.
+- **Cloudflare Tunnel** is the only path in from the internet. It terminates at
+  `https://caddy:443` (not the app container) so public traffic still passes
+  CrowdSec, the security headers, and the access log. Jellyfin is deliberately
+  not tunnelled — Cloudflare's ToS forbids video streaming over the free CDN.
+- All persistent state lives under `/opt/dockerdata/<service>`; media/user data
+  under `/mnt/storage`.
+
+## Secrets
+
+Real env files live in `secrets/*.env` (gitignored). Each stack's
+`compose/<name>/.env` is a symlink into `secrets/`, and `secrets/*.env.example`
+are the checked-in templates. `compose/cloudflared/config.yml` is also
+gitignored (tunnel UUID + hostnames) — copy `config.yml.example` and fill it in.
+The tunnel credential lives outside the repo at `/opt/dockerdata/cloudflared/creds.json`.
 
 ## Quick Start
 
-1. **Clone and enter directory:**
+1. **Create env files from the templates:**
    ```bash
-   cd /home/tim/coding/homelab
-   ```
-
-2. **Set up environment files:**
-   ```bash
-   # Copy example files and edit with your values
    for f in secrets/.*.env.example; do cp "$f" "${f%.example}"; done
-   # Then edit each .env file with your credentials
+   # edit each secrets/*.env with real values (incl. DOMAIN in .caddy.env)
    ```
 
-3. **Create symlinks in compose directories:**
+2. **Symlink them into the stacks** (repeat per stack; cloudflared needs none):
    ```bash
-   ln -s ../../secrets/.arr.env compose/arr/.env
-   ln -s ../../secrets/.caddy.env compose/caddy/.env
-   ln -s ../../secrets/.core.env compose/core/.env
-   ln -s ../../secrets/.immich.env compose/immich/.env
-   ln -s ../../secrets/.plex.env compose/plex/.env
-   ln -s ../../secrets/.utilities.env compose/utilities/.env
-   ln -s ../../secrets/.vaultwarden.env compose/vaultwarden/.env
+   for d in annabel-rene arr caddy core filebrowser immich jellyfin seerr utilities vaultwarden; do
+     ln -s "../../secrets/.$d.env" "compose/$d/.env"
+   done
+   ln -s ../../secrets/.navidrom.env compose/navidrome/.env   # filename typo is intentional
+   cp compose/cloudflared/config.yml.example compose/cloudflared/config.yml  # then edit
    ```
 
-4. **Create Docker networks:**
+3. **Create the shared network:**
    ```bash
    docker network create caddy_network
    ```
 
-5. **Start services (in order):**
+4. **Start stacks (order matters: caddy → core → the rest):**
    ```bash
    docker compose -f compose/caddy/compose.yaml up -d
    docker compose -f compose/core/compose.yaml up -d
-   docker compose -f compose/arr/compose.yaml up -d
-   docker compose -f compose/plex/compose.yaml up -d
-   docker compose -f compose/immich/compose.yaml up -d
-   docker compose -f compose/utilities/compose.yaml up -d
-   docker compose -f compose/vaultwarden/compose.yaml up -d
+   for s in arr cloudflared immich jellyfin navidrome filebrowser seerr vaultwarden utilities annabel-rene; do
+     docker compose -f compose/$s/compose.yaml up -d
+   done
    ```
+
+> **Gotcha:** after editing `compose/caddy/Caddyfile` (or any other single-file
+> bind mount), `caddy reload` is not enough — editors replace the file's inode
+> and the container keeps the old one. Force-recreate instead:
+> `docker compose -f compose/caddy/compose.yaml up -d --force-recreate caddy`
+
+## Backups
+
+Automated via [autorestic](https://autorestic.vercel.app/):
+- Config: `autorestic/.autorestic.yml`; restic password in
+  `secrets/.autorestic.env` (template checked in).
+- Locations: `/mnt/storage/data` (user data), `/opt/dockerdata` (service
+  state), `secrets/` (env files).
+- Runs weekly from root's crontab via `autorestic/autorestic.sh`, which mounts
+  the backup HDD on demand and unmounts afterwards — `/mnt/backup` being empty
+  between runs is expected.
+- The `docker-data` location's hook stops all containers except `pihole`
+  during the snapshot and restarts them after.
 
 ## Hardware
 
@@ -107,55 +131,22 @@ Minimal, personal homelab configuration managed via Docker Compose.
 - CPU: Intel Celeron G3900T @ 2.60GHz (2 cores)
 - RAM: 32 GB DDR4
 - Storage:
-  - 232GB SSD (system, LVM)
-  - 3.6TB HDD (`/mnt/storage`) - media files
-  - 1.8TB HDD (`/mnt/backup`) - autorestic backups
+  - 232 GB SSD (system, LVM — includes `/opt/dockerdata`)
+  - 3.6 TB HDD (`/mnt/storage`) — media and user data
+  - 1.8 TB HDD — autorestic backup target, mounted on demand at `/mnt/backup`
 
-## Backups
+## Host Configuration Notes
 
-Automated backups via [autorestic](https://autorestic.vercel.app/):
-- Config: `autorestic/autorestic.yaml`
-- Locations backed up:
-  - `/mnt/storage/data` - user data
-  - `/opt/dockerdata` - service configuration
-  - `secrets/` - environment files
-- Backup destination: `/mnt/backup`
+### Pi-hole / systemd-resolved
+- Set `DNSStubListener=no` in `/etc/systemd/resolved.conf`, then
+  `sudo systemctl restart systemd-resolved`.
+- Fritzbox DHCP DNS: [Pi-hole Fritzbox guide](https://docs.pi-hole.net/routers/fritzbox/#distribute-pi-hole-as-dns-server-via-dhcp)
 
-## Additional Configuration
+### Cron
+- The backup job lives in root's crontab (`sudo crontab -e`) and calls
+  `autorestic/autorestic.sh`.
 
-### Pi-hole Setup
-- Edit `/usr/lib/systemd/resolved.conf` and set:
-	```
-	DNSStubListener=no
-	```
-- Restart systemd-resolved:
-	```bash
-	sudo systemctl restart systemd-resolved
-	```
-- For Fritzbox DHCP DNS: [Pi-hole Fritzbox DHCP Guide](https://docs.pi-hole.net/routers/fritzbox/#distribute-pi-hole-as-dns-server-via-dhcp)
-
-### Cronjobs
-- Autorestic backup runs daily via cron
-- Edit crontab:
-	```bash
-	sudo crontab -e
-	```
-
-### Mount Volumes on Boot
-1. List block devices:
-	```bash
-	lsblk
-	```
-2. Get UUIDs:
-	```bash
-	sudo blkid /dev/sdb2
-	```
-3. Edit `/etc/fstab`:
-	```bash
-	sudo nano /etc/fstab
-	```
-4. Add mount entries:
-	```
-	UUID=YOUR_STORAGE_UUID /mnt/storage ntfs-3g defaults,nofail,uid=1000,gid=1000,umask=0022 0 0
-	UUID=YOUR_BACKUP_UUID  /mnt/backup  ext4   defaults,nofail 0 2
-	```
+### Mounts
+- `/mnt/storage` is mounted at boot via `/etc/fstab` (UUID entry with
+  `defaults,nofail`). The backup HDD is *not* in fstab — the backup script
+  mounts it only for the duration of a run.

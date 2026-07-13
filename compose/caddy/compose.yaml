@@ -18,7 +18,7 @@ services:
       - /opt/dockerdata/caddy/data:/data
       - /opt/dockerdata/caddy/config:/config
       - /opt/dockerdata/caddy/logs:/var/log/caddy
-      - /opt/dockerdata/caddy/goaccess:/var/www/goaccess  
+      - /opt/dockerdata/caddy/goaccess:/var/www/goaccess
 
     depends_on:
       crowdsec:
@@ -27,7 +27,7 @@ services:
       - caddy_network
 
   goaccess:
-    image: allinurl/goaccess
+    image: allinurl/goaccess:1.10.1
     container_name: goaccess
     restart: unless-stopped
     volumes:
@@ -39,16 +39,15 @@ services:
       --log-format=CADDY
       --real-time-html
       --port=7890
-      --ws-url=wss://goaccess.dev.tim-boo.com:443/ws
-      --origin=https://goaccess.dev.tim-boo.com
+      --ws-url=wss://goaccess.dev.${DOMAIN}:443/ws
+      --origin=https://goaccess.dev.${DOMAIN}
       --geoip-database=/opt/GeoLite2-City.mmdb
-      --enable-debug
       -o /var/www/goaccess/index.html
     networks:
       - caddy_network
 
   crowdsec:
-    image: crowdsecurity/crowdsec:latest
+    image: crowdsecurity/crowdsec:v1.7.6
     container_name: crowdsec
     restart: unless-stopped
     environment:
@@ -70,5 +69,5 @@ services:
 
 networks:
   caddy_network:
+    external: true
     name: caddy_network
-    driver: bridge

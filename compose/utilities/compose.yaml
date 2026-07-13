@@ -27,7 +27,7 @@ services:
     environment:
       MEILI_ADDR: http://karakeep-meilisearch:7700
       BROWSER_WEB_URL: http://karakeep-chrome:9222
-      DATA_DIR: /data 
+      DATA_DIR: /data
     networks:
       - default
       - caddy_network
