@@ -1,10 +1,12 @@
 version: 2
 
+# The repo password is NOT set here: autorestic does not expand ${VARS} in
+# the key field (it would use the literal string as the password). It comes
+# from AUTORESTIC_BACKUP_HDD_RESTIC_PASSWORD in secrets/.autorestic.env.
 backends:
   backup-hdd:
     type: local
     path: /mnt/backup/restic-backups
-    key: ${RESTIC_PASSWORD}
 
 global:
   forget:
