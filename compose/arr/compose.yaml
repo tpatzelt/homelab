@@ -39,10 +39,17 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /opt/dockerdata/qbittorrent:/config
       - /mnt/storage/plexmedia:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8081"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped
     network_mode: service:gluetun
     depends_on:
-      - gluetun
+      gluetun:
+        condition: service_healthy
 
   sonarr:
     image: lscr.io/linuxserver/sonarr:4.0.15
@@ -55,8 +62,17 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /opt/dockerdata/sonarr:/config
       - /mnt/storage/plexmedia:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8989/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped
     network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
 
   radarr:
     image: lscr.io/linuxserver/radarr:6.0.4
@@ -69,8 +85,17 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /opt/dockerdata/radarr:/config
       - /mnt/storage/plexmedia:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:7878/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped
     network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
 
   lidarr:
     image: lscr.io/linuxserver/lidarr:3.1.0
@@ -83,8 +108,17 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /opt/dockerdata/lidarr:/config
       - /mnt/storage/plexmedia:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8686/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped
     network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
 
   bazarr:
     image: lscr.io/linuxserver/bazarr:1.5.4
@@ -97,8 +131,18 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /opt/dockerdata/bazarr:/config
       - /mnt/storage/plexmedia:/data
+    healthcheck:
+      # bazarr has no unauthenticated /ping, so probe the web root
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:6767"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped
     network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
 
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:2.3.0
@@ -110,8 +154,17 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /opt/dockerdata/prowlarr:/config
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9696/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped
     network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
 
 networks:
   gluetun_network:

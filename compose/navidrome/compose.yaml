@@ -13,6 +13,12 @@ services:
       - "/opt/dockerdata/navidrome/data:/data"
       - "/mnt/storage/data/Media/musik/:/music/storage:ro"
       - "/mnt/storage/plexmedia/music/:/music/torrent:ro"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:4533/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       - caddy_network
 

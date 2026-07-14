@@ -9,6 +9,13 @@ services:
     environment:
       DOZZLE_ENABLE_ACTIONS: "true"
       DOZZLE_ENABLE_SHELL: "true"
+    healthcheck:
+      # Scratch image, no shell — dozzle ships its own healthcheck command
+      test: ["CMD", "/dozzle", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       - caddy_network
 
@@ -46,6 +53,12 @@ services:
     restart: unless-stopped
     volumes:
       - /opt/dockerdata/heimdall:/config
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     networks:
       - caddy_network
 
@@ -57,6 +70,13 @@ services:
     volumes:
       - /opt/dockerdata/beszel_data:/beszel_data
       - /var/run/beszel-socket:/beszel_socket
+    healthcheck:
+      # Scratch image, no shell — beszel ships its own health command
+      test: ["CMD", "/beszel", "health", "--url", "http://localhost:8090"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       - caddy_network
 
@@ -77,6 +97,13 @@ services:
       TOKEN: '${BESZEL_TOKEN}'
       HUB_URL: '${BESZEL_HUB_URL}'
       LISTEN: /beszel_socket/beszel.sock
+    healthcheck:
+      # Scratch image, no shell — the agent binary checks its own socket
+      test: ["CMD", "/agent", "health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 networks:
   caddy_network:

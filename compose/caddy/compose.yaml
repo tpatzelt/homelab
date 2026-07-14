@@ -23,6 +23,14 @@ services:
     depends_on:
       crowdsec:
         condition: service_healthy
+    healthcheck:
+      # Probes the admin API (localhost-only, port 2019); 127.0.0.1 because
+      # busybox wget prefers ::1 and the admin endpoint is IPv4-only
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       - caddy_network
 
@@ -43,6 +51,14 @@ services:
       --origin=https://goaccess.dev.${DOMAIN}
       --geoip-database=/opt/GeoLite2-City.mmdb
       -o /var/www/goaccess/index.html
+    healthcheck:
+      # Port 7890 only speaks WebSocket (plain HTTP gets a 400), so just
+      # check that the socket accepts connections
+      test: ["CMD", "nc", "-z", "127.0.0.1", "7890"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       - caddy_network
 
