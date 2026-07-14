@@ -81,7 +81,7 @@ services:
       - caddy_network
 
   beszel-agent:
-    image: henrygd/beszel-agent:0.18.2
+    image: henrygd/beszel-agent:0.18.7
     container_name: beszel-agent
     env_file: ./.env
     restart: unless-stopped
