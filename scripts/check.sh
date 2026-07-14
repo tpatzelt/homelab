@@ -9,7 +9,7 @@
 # Needs: docker (with compose v2) and python3. shellcheck/yamllint are used
 # from PATH when installed, otherwise via their Docker images.
 
-# shellcheck disable=SC2329  # check_* functions are invoked indirectly via run_check
+# shellcheck disable=SC2317,SC2329  # check_* functions are invoked indirectly via run_check (code differs by shellcheck version)
 
 set -u
 
