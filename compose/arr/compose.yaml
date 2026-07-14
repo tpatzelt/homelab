@@ -28,7 +28,7 @@ services:
       - caddy_network
 
   qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:4.6.3
+    image: lscr.io/linuxserver/qbittorrent:4.6.7
     container_name: qbittorrent
     env_file: ./.env
     environment:
@@ -52,7 +52,7 @@ services:
         condition: service_healthy
 
   sonarr:
-    image: lscr.io/linuxserver/sonarr:4.0.15
+    image: lscr.io/linuxserver/sonarr:4.0.19
     env_file: ./.env
     container_name: sonarr
     environment:
@@ -75,7 +75,7 @@ services:
         condition: service_healthy
 
   radarr:
-    image: lscr.io/linuxserver/radarr:6.0.4
+    image: lscr.io/linuxserver/radarr:6.3.0
     container_name: radarr
     env_file: ./.env
     environment:
@@ -121,7 +121,7 @@ services:
         condition: service_healthy
 
   bazarr:
-    image: lscr.io/linuxserver/bazarr:1.5.4
+    image: lscr.io/linuxserver/bazarr:1.6.0
     container_name: bazarr
     env_file: ./.env
     environment:
@@ -145,7 +145,7 @@ services:
         condition: service_healthy
 
   prowlarr:
-    image: lscr.io/linuxserver/prowlarr:2.3.0
+    image: lscr.io/linuxserver/prowlarr:2.4.0
     container_name: prowlarr
     env_file: ./.env
     environment:

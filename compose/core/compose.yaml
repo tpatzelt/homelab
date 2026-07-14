@@ -48,7 +48,7 @@ services:
 
   heimdall:
     container_name: heimdall
-    image: lscr.io/linuxserver/heimdall:2.7.6
+    image: lscr.io/linuxserver/heimdall:2.8.1
     env_file: ./.env
     restart: unless-stopped
     volumes:
