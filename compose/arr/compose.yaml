@@ -28,7 +28,7 @@ services:
       - caddy_network
 
   qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:4.6.7
+    image: lscr.io/linuxserver/qbittorrent:20.04.1
     container_name: qbittorrent
     env_file: ./.env
     environment:
@@ -98,7 +98,7 @@ services:
         condition: service_healthy
 
   lidarr:
-    image: lscr.io/linuxserver/lidarr:3.1.0
+    image: lscr.io/linuxserver/lidarr:8.1.2135
     container_name: lidarr
     env_file: ./.env
     environment:
