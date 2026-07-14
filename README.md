@@ -131,6 +131,18 @@ shellcheck/yamllint are used from PATH when installed, otherwise via their
 Docker images. CI (`.github/workflows/check.yml`) runs the same script on
 every push and pull request.
 
+## Updates
+
+Image version bumps arrive as automated [Renovate](https://docs.renovatebot.com/)
+pull requests (config: `.github/renovate.json5`), batched weekly. The same
+`check.sh` CI runs on each PR and gates auto-merge, but it only validates
+config (`docker compose config`, `caddy validate`, cross-file invariants) —
+**not** that the new image actually runs on the host, so still compare a bump
+against the running container before recreating. Every image is pinned;
+`renovate.json5`'s ignore list is the source of truth for the intentionally
+unpinned ones (the owner's personal `ghcr.io/tpatzelt/*` images, deployed by
+their own pipelines).
+
 ## Backups
 
 Automated via [autorestic](https://autorestic.vercel.app/):

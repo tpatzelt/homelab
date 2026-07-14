@@ -2,7 +2,7 @@ services:
   immich-server:
     # Self-hosted photo and video backup solution (Google Photos alternative)
     container_name: immich-server
-    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
+    image: ghcr.io/immich-app/immich-server:v3.0.2
     env_file: ./.env
     volumes:
       - ${IMMICH_UPLOAD_LOCATION}:/data
@@ -28,7 +28,7 @@ services:
   immich-machine-learning:
     # ML service for face recognition, object detection, and smart search
     container_name: immich-machine-learning
-    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
+    image: ghcr.io/immich-app/immich-machine-learning:v3.0.2
     env_file: ./.env
     volumes:
       - model-cache:/cache
