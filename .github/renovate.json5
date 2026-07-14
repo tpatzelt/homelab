@@ -1,0 +1,59 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: [
+    "config:recommended",
+  ],
+  // Weekly batch window keeps PR noise down: Renovate only opens/updates
+  // branches early Monday morning.
+  schedule: ["before 6am on monday"],
+  // Compose files live under compose/<stack>/, not at the repo root, so the
+  // docker-compose manager needs an explicit file pattern. The dockerfile
+  // manager's default already matches any Dockerfile, but we pin it to the
+  // one custom build we have for clarity.
+  "docker-compose": {
+    managerFilePatterns: ["/compose/[^/]+/compose\\.ya?ml$/"],
+  },
+  dockerfile: {
+    managerFilePatterns: ["/compose/caddy/Dockerfile$/"],
+  },
+  // Auto-merge is done by Renovate itself (platformAutomerge disabled) so it
+  // only merges once the repo's `check` GitHub Actions workflow — which runs
+  // on every pull_request — reports success. A red or pending check blocks
+  // the merge. CI validates config only (docker compose config, caddy
+  // validate, cross-file invariants), not that the new image runs on the host.
+  platformAutomerge: false,
+  packageRules: [
+    {
+      // ghcr.io/tpatzelt/* are the owner's personal images, built and
+      // deployed by their own pipelines — Renovate must not manage them.
+      // This ignore list is the source of truth for intentionally unpinned
+      // images in this repo.
+      matchPackageNames: ["/^ghcr\\.io/tpatzelt//"],
+      enabled: false,
+    },
+    {
+      // Both Immich images (server + machine-learning, plus the digest-pinned
+      // immich-app/postgres) land in one PR.
+      matchPackageNames: ["/^ghcr\\.io/immich-app//"],
+      groupName: "immich",
+    },
+    {
+      // All LinuxServer.io images share a release cadence — one PR for all.
+      matchPackageNames: ["/^lscr\\.io/linuxserver//"],
+      groupName: "linuxserver",
+    },
+    {
+      // Major bumps are never auto-merged and are labeled so they stand out
+      // for manual review.
+      matchUpdateTypes: ["major"],
+      addLabels: ["major"],
+      automerge: false,
+    },
+    {
+      // Everything else (minor/patch/digest, incl. the digest-pinned valkey
+      // and immich postgres) may auto-merge once CI is green.
+      matchUpdateTypes: ["minor", "patch", "digest", "pin"],
+      automerge: true,
+    },
+  ],
+}

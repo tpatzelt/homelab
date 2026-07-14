@@ -18,7 +18,7 @@ services:
 
   karakeep:
     container_name: karakeep
-    image: ghcr.io/karakeep-app/karakeep:${KARAKEEP_VERSION:-release}
+    image: ghcr.io/karakeep-app/karakeep:0.32.0
     restart: unless-stopped
     volumes:
       - /opt/dockerdata/karakeep/data:/data
