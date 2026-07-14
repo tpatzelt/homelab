@@ -67,7 +67,15 @@ for loc in $LOCATIONS; do
     echo "Verified: snapshot from $TODAY exists for '$loc'"
 done
 
+# 4. Repo health check: verify structure every run, and read-verify a rotating
+#    1/6 of the pack data so the whole repo gets read every ~6 weeks. Catches
+#    HDD bit rot before a restore needs the data.
+SUBSET="$(( $(date +%-V) % 6 + 1 ))/6"
+/usr/local/bin/restic check --read-data-subset "$SUBSET" \
+    || fail "restic check (read-data-subset $SUBSET) failed"
+echo "Verified: repo healthy (read subset $SUBSET)"
+
 echo "Backup completed and verified."
 hc_ping "" "OK: snapshots for [$LOCATIONS] created $TODAY"
 
-# 4. Script finishes -> 'trap' triggers cleanup() automatically
+# 5. Script finishes -> 'trap' triggers cleanup() automatically
