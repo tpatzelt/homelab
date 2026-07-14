@@ -52,7 +52,7 @@ services:
 
   karakeep-meilisearch:
     container_name: karakeep-meilisearch
-    image: getmeili/meilisearch:v1.13.3
+    image: getmeili/meilisearch:v1.49.0
     restart: unless-stopped
     env_file:
       - .env
