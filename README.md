@@ -32,6 +32,7 @@ public ones on `*.example.com` via a Cloudflare Tunnel.
 | **vaultwarden** | Vaultwarden | `vaultwarden.dev.example.com` | Password manager (Bitwarden-compatible) |
 | **utilities** | Karakeep | `karakeep.dev.example.com` | Bookmark manager (+ Meilisearch, Chrome) |
 | | ip-tracker | `iptracker.dev.example.com` | Public-IP change tracker |
+| **job-agent** | job-agent | — | Telegram job-application agent (bot only, no web UI) |
 | **cloudflared** | cloudflared | — | Cloudflare Tunnel — the only public ingress |
 | **annabel-rene** | Wedding site | `annabel-rene.example.com` | Public static site, served through the tunnel |
 
@@ -86,7 +87,7 @@ The tunnel credential lives outside the repo at `/opt/dockerdata/cloudflared/cre
 
 2. **Symlink them into the stacks** (repeat per stack; cloudflared needs none):
    ```bash
-   for d in annabel-rene arr caddy core filebrowser immich jellyfin seerr utilities vaultwarden; do
+   for d in annabel-rene arr caddy core filebrowser immich jellyfin job-agent seerr utilities vaultwarden; do
      ln -s "../../secrets/.$d.env" "compose/$d/.env"
    done
    ln -s ../../secrets/.navidrom.env compose/navidrome/.env   # filename typo is intentional
@@ -102,7 +103,7 @@ The tunnel credential lives outside the repo at `/opt/dockerdata/cloudflared/cre
    ```bash
    docker compose -f compose/caddy/compose.yaml up -d
    docker compose -f compose/core/compose.yaml up -d
-   for s in arr cloudflared immich jellyfin navidrome filebrowser seerr vaultwarden utilities annabel-rene; do
+   for s in arr cloudflared immich jellyfin job-agent navidrome filebrowser seerr vaultwarden utilities annabel-rene; do
      docker compose -f compose/$s/compose.yaml up -d
    done
    ```
@@ -111,6 +112,24 @@ The tunnel credential lives outside the repo at `/opt/dockerdata/cloudflared/cre
 > bind mount), `caddy reload` is not enough — editors replace the file's inode
 > and the container keeps the old one. Force-recreate instead:
 > `docker compose -f compose/caddy/compose.yaml up -d --force-recreate caddy`
+
+## Validation
+
+`scripts/check.sh` runs an offline validation harness over the whole repo:
+`docker compose config` on every stack, env-template completeness,
+`caddy validate` plus Caddyfile-upstream/compose consistency (gluetun-aware),
+autorestic `LOCATIONS` sync, README service-table coverage, shellcheck,
+yamllint (config in `.yamllint`), and a warn-only image-pinning report.
+
+```bash
+./scripts/check.sh
+```
+
+It needs Docker and python3 and reads **no real secrets** — dummy env files
+are generated from `secrets/*.env.example` into a temp dir and cleaned up.
+shellcheck/yamllint are used from PATH when installed, otherwise via their
+Docker images. CI (`.github/workflows/check.yml`) runs the same script on
+every push and pull request.
 
 ## Backups
 

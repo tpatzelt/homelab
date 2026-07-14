@@ -41,7 +41,7 @@ diff <(docker exec caddy cat /etc/caddy/Caddyfile) compose/caddy/Caddyfile
 ```
 Only reach for `caddy reload` when the file was edited in place (e.g. a shell append). The same trap applies to every other single-file bind mount in this repo — `compose/cloudflared/config.yml`, `compose/caddy/GeoLite2-City.mmdb`.
 
-There is no lint/test suite. "Validation" means: `docker compose config` for YAML/interpolation errors, and checking the Caddyfile matcher/host names against the compose service names.
+Validation is automated: run `./scripts/check.sh` after any compose/Caddyfile/env-template change. It works offline against dummy env files generated from `secrets/*.env.example` and checks: `docker compose config` on every stack, env-template completeness, `caddy validate`, Caddyfile-upstream/compose consistency (gluetun-aware), autorestic `LOCATIONS` sync, per-stack env-example presence, README service-table coverage, shellcheck, yamllint (config in `.yamllint`), and a warn-only image-pinning report. CI (`.github/workflows/check.yml`) runs the same script on push/PR.
 
 ## Architecture
 

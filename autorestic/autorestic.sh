@@ -12,6 +12,7 @@ LOCATIONS="my-data docker-data secrets"
 
 # set -a exports RESTIC_PASSWORD (and HEALTHCHECKS_URL) so child processes see them
 set -a
+# shellcheck source=/dev/null
 source "$ENV_FILE"
 set +a
 

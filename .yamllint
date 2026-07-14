@@ -1,0 +1,11 @@
+# Relaxed lint for hand-maintained compose/config YAML (see scripts/check.sh).
+# trailing-spaces and new-line-at-end-of-file are demoted to warnings so the
+# linter never forces churn in files that are bind-mounted on the live host.
+extends: relaxed
+
+rules:
+  line-length: disable
+  trailing-spaces:
+    level: warning
+  new-line-at-end-of-file:
+    level: warning
