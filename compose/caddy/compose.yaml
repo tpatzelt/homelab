@@ -35,7 +35,7 @@ services:
       - caddy_network
 
   goaccess:
-    image: allinurl/goaccess:1.10.1
+    image: allinurl/goaccess:1.10.2
     container_name: goaccess
     restart: unless-stopped
     volumes:
