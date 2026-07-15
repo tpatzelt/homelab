@@ -273,6 +273,40 @@ check_yamllint() {
   return "${PIPESTATUS[0]}"
 }
 
+# Host-only: single-file/dir bind-mount sources that live outside the repo
+# (gitignored config, unbacked data) and that Docker silently replaces with an
+# empty *directory* when the source is missing — the failure then hides until
+# the next container recreate, because a running container keeps the deleted
+# inode open (this is exactly how cloudflared's config.yml and the GeoLite2 DB
+# went missing; see CLAUDE.md). Assert each is present AND a regular file, so
+# the rot surfaces here instead of on the next `restart-services.sh`.
+# Skipped in CI, where these host paths legitimately don't exist.
+check_required_host_files() {
+  if [[ -n "${CI:-}" ]]; then
+    echo "    skipped (CI: host data dirs are not present)"
+    return 0
+  fi
+  local rc=0 f
+  local files=(
+    /opt/dockerdata/cloudflared/config.yml
+    /opt/dockerdata/cloudflared/creds.json
+    /opt/dockerdata/caddy/geoip/GeoLite2-City.mmdb
+  )
+  for f in "${files[@]}"; do
+    if [[ -f "$f" ]]; then
+      echo "    ok: $f"
+    elif [[ -d "$f" ]]; then
+      echo "    FAIL: $f is a DIRECTORY — Docker made it from a missing bind-mount"
+      echo "          source; restore the file and recreate the mounting container"
+      rc=1
+    else
+      echo "    FAIL: $f is missing — a bind mount depends on it"
+      rc=1
+    fi
+  done
+  return "$rc"
+}
+
 # Warn-only by design: some services intentionally track :latest.
 check_image_pins() {
   WORK_DIR="$WORK_DIR" python3 - <<'PY'
@@ -326,6 +360,7 @@ run_check "caddyfile upstreams vs compose"     check_caddy_upstreams
 run_check "autorestic locations in sync"       check_autorestic_locations
 run_check "env example exists per stack"       check_env_examples_exist
 run_check "README service table coverage"      check_readme_table
+run_check "required host files present"        check_required_host_files
 run_check "shellcheck"                         check_shellcheck
 run_check "yamllint"                           check_yamllint
 run_check "image pinning report (warn-only)"   check_image_pins

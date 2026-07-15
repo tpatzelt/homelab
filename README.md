@@ -73,9 +73,11 @@ public ones on `*.example.com` via a Cloudflare Tunnel.
 
 Real env files live in `secrets/*.env` (gitignored). Each stack's
 `compose/<name>/.env` is a symlink into `secrets/`, and `secrets/*.env.example`
-are the checked-in templates. `compose/cloudflared/config.yml` is also
-gitignored (tunnel UUID + hostnames) — copy `config.yml.example` and fill it in.
-The tunnel credential lives outside the repo at `/opt/dockerdata/cloudflared/creds.json`.
+are the checked-in templates. The cloudflared tunnel config and credential both
+live outside the repo under `/opt/dockerdata/cloudflared/` (`config.yml` carries
+the tunnel UUID + hostnames, `creds.json` the credential); the directory is
+bind-mounted into the container and `compose/cloudflared/config.yml.example` is
+the tracked template to copy from.
 
 ## Quick Start
 
@@ -91,7 +93,8 @@ The tunnel credential lives outside the repo at `/opt/dockerdata/cloudflared/cre
      ln -s "../../secrets/.$d.env" "compose/$d/.env"
    done
    ln -s ../../secrets/.navidrom.env compose/navidrome/.env   # filename typo is intentional
-   cp compose/cloudflared/config.yml.example compose/cloudflared/config.yml  # then edit
+   sudo install -Dm644 compose/cloudflared/config.yml.example \
+     /opt/dockerdata/cloudflared/config.yml  # then edit with the real tunnel UUID + hostname
    ```
 
 3. **Create the shared network:**

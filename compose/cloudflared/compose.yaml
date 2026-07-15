@@ -1,15 +1,19 @@
 services:
   cloudflared:
-    # Locally-managed tunnel: ingress lives in ./config.yml, the tunnel
-    # credential is staged at /opt/dockerdata/cloudflared/creds.json.
-    # Image entrypoint is already `cloudflared --no-autoupdate`.
+    # Locally-managed tunnel: both ingress config (config.yml) and the tunnel
+    # credential (creds.json) live in /opt/dockerdata/cloudflared, mounted as a
+    # directory — NOT as two single-file binds. A single-file bind whose source
+    # is missing is silently turned into an empty directory by Docker (the
+    # config.yml went missing exactly this way; see CLAUDE.md), and the dir now
+    # sits inside autorestic's /opt/dockerdata snapshot so it is backed up.
+    # config.yml.example (repo) is the template; check.sh asserts the real files
+    # exist. Image entrypoint is already `cloudflared --no-autoupdate`.
     image: cloudflare/cloudflared:2026.7.1
     container_name: cloudflared
     restart: unless-stopped
     command: tunnel --config /etc/cloudflared/config.yml --metrics 0.0.0.0:2000 run
     volumes:
-      - ./config.yml:/etc/cloudflared/config.yml:ro
-      - /opt/dockerdata/cloudflared/creds.json:/etc/cloudflared/creds.json:ro
+      - /opt/dockerdata/cloudflared:/etc/cloudflared:ro
     healthcheck:
       test: ["CMD", "cloudflared", "tunnel", "--metrics", "127.0.0.1:2000", "ready"]
       interval: 30s
