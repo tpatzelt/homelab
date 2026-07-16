@@ -132,6 +132,13 @@
 		reverse_proxy annabel-rene-frontend:4321
 	}
 
+	# Read-only monitoring UI for the job agent. It ships no authentication of
+	# its own, so it must stay on the LAN-only *.dev wildcard.
+	@jobagent host jobagent.dev.{$DOMAIN}
+	handle @jobagent {
+		reverse_proxy job-agent:8765
+	}
+
 	# Catch-all
 	handle {
 		abort

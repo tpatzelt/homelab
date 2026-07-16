@@ -4,8 +4,21 @@ services:
     container_name: job-agent
     restart: unless-stopped
     env_file: ./.env
+    environment:
+      # Bind the dashboard on all interfaces inside the container so Caddy can
+      # reach it over caddy_network. It stays off the host's ports (no `ports:`
+      # mapping), and *.dev is a LAN-only wildcard, so it is not public.
+      - JOB_CRAWLER_DASHBOARD_HOST=0.0.0.0
     volumes:
       - /opt/dockerdata/job-agent:/app/data
     # Headless Chrome (botasaurus browser fallback) needs more shared
     # memory than Docker's 64MB default.
     shm_size: "1gb"
+    networks:
+      - default
+      - caddy_network
+
+networks:
+  caddy_network:
+    external: true
+    name: caddy_network

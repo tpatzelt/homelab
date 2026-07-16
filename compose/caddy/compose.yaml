@@ -41,7 +41,10 @@ services:
     volumes:
       - /opt/dockerdata/caddy/logs/:/var/log/caddy:ro
       - /opt/dockerdata/caddy/goaccess:/var/www/goaccess
-      - ./GeoLite2-City.mmdb:/opt/GeoLite2-City.mmdb:ro
+      # Directory mount (not a single-file bind): a missing single-file source
+      # is silently turned into an empty dir by Docker, and this path lives in
+      # autorestic's /opt/dockerdata snapshot so the DB is backed up. See CLAUDE.md.
+      - /opt/dockerdata/caddy/geoip:/opt/geoip:ro
     command: >
       /var/log/caddy/wildcard-access.log
       --log-format=CADDY
@@ -49,7 +52,7 @@ services:
       --port=7890
       --ws-url=wss://goaccess.dev.${DOMAIN}:443/ws
       --origin=https://goaccess.dev.${DOMAIN}
-      --geoip-database=/opt/GeoLite2-City.mmdb
+      --geoip-database=/opt/geoip/GeoLite2-City.mmdb
       -o /var/www/goaccess/index.html
     healthcheck:
       # Port 7890 only speaks WebSocket (plain HTTP gets a 400), so just
