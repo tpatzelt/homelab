@@ -32,7 +32,7 @@ public ones on `*.example.com` via a Cloudflare Tunnel.
 | **vaultwarden** | Vaultwarden | `vaultwarden.dev.example.com` | Password manager (Bitwarden-compatible) |
 | **utilities** | Karakeep | `karakeep.dev.example.com` | Bookmark manager (+ Meilisearch, Chrome) |
 | | ip-tracker | `iptracker.dev.example.com` | Public-IP change tracker |
-| **job-agent** | job-agent | — | Telegram job-application agent (bot only, no web UI) |
+| **job-agent** | job-agent | `jobagent.dev.example.com` | Telegram job-application agent (+ read-only monitoring dashboard) |
 | **cloudflared** | cloudflared | — | Cloudflare Tunnel — the only public ingress |
 | **annabel-rene** | Wedding site | `annabel-rene.example.com` | Public static site, served through the tunnel |
 
