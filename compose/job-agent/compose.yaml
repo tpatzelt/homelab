@@ -9,6 +9,10 @@ services:
       # reach it over caddy_network. It stays off the host's ports (no `ports:`
       # mapping), and *.dev is a LAN-only wildcard, so it is not public.
       - JOB_CRAWLER_DASHBOARD_HOST=0.0.0.0
+      # Scan each user once per day in the morning instead of every 6h.
+      # scan_hour is interpreted in JOB_CRAWLER_SCAN_TIMEZONE.
+      - JOB_CRAWLER_SCAN_HOUR=7
+      - JOB_CRAWLER_SCAN_TIMEZONE=Europe/Berlin
     volumes:
       - /opt/dockerdata/job-agent:/app/data
     # Headless Chrome (botasaurus browser fallback) needs more shared
