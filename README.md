@@ -159,6 +159,10 @@ Automated via [autorestic](https://autorestic.vercel.app/):
 - The `docker-data` location's hook stops all containers except `pihole`
   during the snapshot and restarts them after.
 
+**Restoring after a drive failure:** see [`RESTORE.md`](RESTORE.md) for the
+disaster-recovery runbook — what you must keep off-machine (above all, the
+restic repo password), and step-by-step restore commands.
+
 ## Hardware
 
 **Acer Veriton N4640G**
