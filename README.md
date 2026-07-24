@@ -163,6 +163,37 @@ Automated via [autorestic](https://autorestic.vercel.app/):
 disaster-recovery runbook — what you must keep off-machine (above all, the
 restic repo password), and step-by-step restore commands.
 
+## VPN Leak Monitoring
+
+Every service in the `arr` stack routes through gluetun's network namespace,
+so a leak means either that binding came undone or gluetun's kill switch is
+not in place. `scripts/vpn-egress-check.sh` verifies both, structurally and
+empirically:
+
+```bash
+./scripts/vpn-egress-check.sh
+```
+
+It checks that gluetun is running, that its `iptables`/`ip6tables` default
+policies are `DROP`, that every dependent container really shares gluetun's
+netns (`network_mode: service:gluetun` shows up as `container:<id>`), and that
+the public IP seen from inside qBittorrent differs from the host's own. Exit 0
+means no leak; exit 1 means leaking, or that it could not prove otherwise. A
+tunnel that is down but firewalled reports as safe, not as a leak.
+
+Monitoring is the same Healthchecks.io dead-man pattern as backups: the ping
+URL goes in `secrets/.vpn-egress.env` (template checked in, no symlink — it is
+not a compose stack), and pings are simply skipped if unset. Use a **separate**
+check from the backup one so a leak alert is not mistaken for a backup alert.
+
+What it does **not** catch is the few-second window at container start where
+gluetun's `ESTABLISHED,RELATED` accept rule lets a connection opened before the
+firewall loads survive it (fixed upstream only on `:latest`, after v3.41.1).
+What closes that window is `depends_on: gluetun: condition: service_healthy` on
+every dependent service — keep it there when adding one. qBittorrent has a
+second layer: its `Session\Interface=tun0` binding means it has no socket at
+all when the tunnel is absent.
+
 ## Hardware
 
 **Acer Veriton N4640G**
@@ -183,6 +214,24 @@ restic repo password), and step-by-step restore commands.
 ### Cron
 - The backup job lives in root's crontab (`sudo crontab -e`) and calls
   `autorestic/autorestic.sh`.
+- The VPN leak check lives in **tim's** crontab (`crontab -e`, no sudo — it
+  only needs docker-group access) and calls `scripts/vpn-egress-check.sh`
+  every 10 minutes, appending to `~/logs/vpn-egress-check.log`:
+  ```cron
+  */10 * * * * /home/tim/coding/homelab/scripts/vpn-egress-check.sh >> /home/tim/logs/vpn-egress-check.log 2>&1
+  ```
+  At 144 runs/day that log grows ~35 MB/year, so it is rotated like the backup
+  one via `/etc/logrotate.d/vpn-egress-check` (needs sudo once):
+  ```
+  /home/tim/logs/vpn-egress-check.log {
+      monthly
+      rotate 3
+      compress
+      missingok
+      notifempty
+      copytruncate
+  }
+  ```
 
 ### Mounts
 - `/mnt/storage` is mounted at boot via `/etc/fstab` (UUID entry with
