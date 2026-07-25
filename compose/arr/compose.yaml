@@ -145,7 +145,7 @@ services:
         condition: service_healthy
 
   prowlarr:
-    image: lscr.io/linuxserver/prowlarr:2.4.0
+    image: lscr.io/linuxserver/prowlarr:2.5.2
     container_name: prowlarr
     env_file: ./.env
     environment:
