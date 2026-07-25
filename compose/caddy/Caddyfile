@@ -127,6 +127,11 @@
 		reverse_proxy navidrome:4533
 	}
 
+	@romm host romm.dev.{$DOMAIN}
+	handle @romm {
+		reverse_proxy romm:8080
+	}
+
 	@annabel-rene host annabel-rene.dev.{$DOMAIN}
 	handle @annabel-rene {
 		reverse_proxy annabel-rene-frontend:4321
