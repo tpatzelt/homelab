@@ -59,6 +59,13 @@ services:
     environment:
       MEILI_NO_ANALYTICS: "true"
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
+      # Meilisearch refuses to start when data.ms was written by an older
+      # version — every Renovate bump would otherwise crash-loop until a
+      # manual dump/restore (1.49.0 -> 1.50.0 did, 2026-07-25). This migrates
+      # data.ms in place on startup instead. Safe to leave on: the index is
+      # derived data karakeep can rebuild, and the alternative is a search
+      # outage after each bump.
+      MEILI_EXPERIMENTAL_DUMPLESS_UPGRADE: "true"
     volumes:
       - /opt/dockerdata/karakeep/meilisearch:/meili_data
     healthcheck:
