@@ -1,7 +1,7 @@
 services:
   # VPN container - all *arr services use network_mode: service:gluetun to route traffic through VPN
   gluetun:
-    image: qmcgaw/gluetun:v3.40.3
+    image: qmcgaw/gluetun:v3.41.1
     env_file: ./.env
     container_name: gluetun
     cap_add:
