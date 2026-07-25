@@ -28,6 +28,7 @@ public ones on `*.example.com` via a Cloudflare Tunnel.
 | **jellyfin** | Jellyfin | `jellyfin.dev.example.com` | Media server (LAN only — no tunnel, see below) |
 | **immich** | Immich | `immich.dev.example.com` | Photo/video backup |
 | **navidrome** | Navidrome | `navidrome.dev.example.com` | Music streaming (Subsonic API) |
+| **romm** | RomM | `romm.dev.example.com` | ROM library manager, browser player (+ MariaDB) |
 | **filebrowser** | File Browser | `filebrowser.dev.example.com` | Web file manager for `/mnt/storage/data` |
 | **vaultwarden** | Vaultwarden | `vaultwarden.dev.example.com` | Password manager (Bitwarden-compatible) |
 | **utilities** | Karakeep | `karakeep.dev.example.com` | Bookmark manager (+ Meilisearch, Chrome) |
@@ -193,6 +194,53 @@ What closes that window is `depends_on: gluetun: condition: service_healthy` on
 every dependent service — keep it there when adding one. qBittorrent has a
 second layer: its `Session\Interface=tun0` binding means it has no socket at
 all when the tunnel is absent.
+
+## ROM Library (RomM)
+
+The library lives at `/mnt/storage/data/Games/romm/library` in RomM's
+"Structure A" layout — `roms/<platform-slug>/` alongside an optional
+`bios/<platform-slug>/`. The folder name **is** the platform: it has to match a
+slug from [Supported Platforms](https://docs.romm.app/latest/platforms/supported-platforms/)
+(`n64`, `snes`, …) or RomM won't recognise it. Everything else — the scraped
+covers, saves, states, `config.yml`, the embedded Valkey, and the MariaDB
+data — sits under `/opt/dockerdata/romm/`, so both halves are already inside
+autorestic's `my-data` and `docker-data` locations without a config change.
+
+Metadata comes from Hasheous only, which needs no account. Adding
+ScreenScraper, IGDB, SteamGridDB or RetroAchievements is a matter of
+uncommenting the matching keys in `secrets/.romm.env` and recreating the
+container — see the [metadata providers docs](https://docs.romm.app/latest/getting-started/metadata-providers/).
+
+The instance stays on the `*.dev` wildcard (LAN only). Serving a ROM library
+through the Cloudflare tunnel would put a copyright-liable, unauthenticated-by-
+default surface on the public internet, and large ROM downloads would hit the
+free plan's edge limits anyway.
+
+### Syncing to a laptop
+
+RomM ships no first-party Linux desktop client and no WebDAV, so the supported
+route is the REST API with a **Client API Token** (Settings → API tokens in the
+web UI; read-only scopes are enough, and the token is shown exactly once).
+`scripts/romm-pull.sh` runs on the *client*, not on this host — copy it over:
+
+```bash
+scp scripts/romm-pull.sh laptop:~/bin/
+ssh laptop 'mkdir -p ~/.config/romm && install -m600 /dev/null ~/.config/romm/token'
+# paste the rmm_… token into that file, then:
+ROMM_URL=https://romm.dev.example.com ~/bin/romm-pull.sh          # whole library
+ROMM_URL=https://romm.dev.example.com ~/bin/romm-pull.sh n64      # one platform
+```
+
+It mirrors into `~/roms/<platform-slug>/` (override with `ROMM_DEST`) and is
+incremental: a ROM is skipped when the local file already matches the size RomM
+reports, so a re-run after a truncated download repairs it. `ROMM_DRY_RUN=1`
+lists what would be pulled without touching the disk. Multi-file ROMs arrive as
+a zip whose size can't be compared to the source, so those are skipped on mere
+existence — delete the local zip to force a re-pull.
+
+For other clients: **Playnite plugin** on Windows, **Argosy** on Android,
+**Grout** on muOS/NextUI handhelds — all first-party, all authenticating with
+the same kind of token. See [First-Party Apps](https://docs.romm.app/latest/ecosystem/first-party-apps/).
 
 ## Hardware
 
