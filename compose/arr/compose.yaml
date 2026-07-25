@@ -28,7 +28,9 @@ services:
       - caddy_network
 
   qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:20.04.1
+    # libtorrentv1 line: matches the libtorrent 1.2.x this config was written
+    # by, so existing .fastresume files load without a forced full recheck.
+    image: lscr.io/linuxserver/qbittorrent:5.2.3-libtorrentv1
     container_name: qbittorrent
     env_file: ./.env
     environment:
