@@ -8,6 +8,16 @@ backends:
     type: local
     path: /mnt/backup/restic-backups
 
+  # Offsite copy in Google Drive via restic's rclone backend. "gdrive:" is the
+  # rclone remote configured under root at /root/.config/rclone/rclone.conf
+  # (cron runs as root). Same password caveat as above: it arrives via
+  # AUTORESTIC_GDRIVE_RESTIC_PASSWORD in secrets/.autorestic.env, not here.
+  # The repo is client-side encrypted, so Google only ever holds an encrypted
+  # blob. autorestic does NOT auto-init: run `restic init` on it once manually.
+  gdrive:
+    type: rclone
+    path: gdrive:restic-offsite
+
 global:
   forget:
     keep-last: 5
@@ -23,8 +33,10 @@ locations:
 
   docker-data:
     from: /opt/dockerdata
-    to: backup-hdd
-    forget: prune 
+    to:
+      - backup-hdd
+      - gdrive
+    forget: prune
     hooks:
       before:
         - echo "Generating list of containers to stop..."
@@ -45,5 +57,26 @@ locations:
 
   secrets:
     from: /home/tim/coding/homelab/secrets
-    to: backup-hdd
+    to:
+      - backup-hdd
+      - gdrive
+    forget: prune
+
+  # Offsite-only locations: these paths are already covered on the HDD by the
+  # my-data location (/mnt/storage/data), so here they go to gdrive only. This
+  # is the hand-picked irreplaceable subset — the rest of /mnt/storage/data
+  # (Games/Media/ISOs) is replaceable and stays HDD-only.
+  offsite-immich:
+    from: /mnt/storage/data/Immich
+    to: gdrive
+    forget: prune
+
+  offsite-docs:
+    from: /mnt/storage/data/Docs
+    to: gdrive
+    forget: prune
+
+  offsite-handy:
+    from: /mnt/storage/data/Handy-Dumps
+    to: gdrive
     forget: prune

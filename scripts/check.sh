@@ -197,16 +197,18 @@ PY
 
 check_autorestic_locations() {
   local sh_locs yml_locs
-  sh_locs=$(sed -n 's/^LOCATIONS="\(.*\)"$/\1/p' autorestic/autorestic.sh \
-    | tr ' ' '\n' | sort)
+  # Union of the LOCAL_LOCATIONS and OFFSITE_LOCATIONS lists — every yml
+  # location must be verified by (at least) one of them; nothing silently dropped.
+  sh_locs=$(sed -n -E 's/^(LOCAL|OFFSITE)_LOCATIONS="(.*)"$/\2/p' autorestic/autorestic.sh \
+    | tr ' ' '\n' | sort -u)
   yml_locs=$(awk '/^locations:/{f=1;next} f&&/^[^ ]/{f=0} f&&/^  [A-Za-z0-9_-]+:/{gsub(/[ :]/,"");print}' \
-    autorestic/.autorestic.yml | sort)
+    autorestic/.autorestic.yml | sort -u)
   if [[ -z "$sh_locs" || -z "$yml_locs" ]]; then
     echo "    FAIL: could not extract locations (script: '$sh_locs' / yml: '$yml_locs')"
     return 1
   fi
   if [[ "$sh_locs" != "$yml_locs" ]]; then
-    echo "    FAIL: LOCATIONS in autorestic.sh != locations in .autorestic.yml"
+    echo "    FAIL: LOCAL+OFFSITE_LOCATIONS in autorestic.sh != locations in .autorestic.yml"
     diff <(echo "$sh_locs") <(echo "$yml_locs") | sed 's/^/      /'
     return 1
   fi
