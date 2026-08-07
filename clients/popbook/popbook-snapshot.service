@@ -1,0 +1,12 @@
+[Unit]
+Description=Full-system rsync snapshot of popbook to lindus
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/popbook-snapshot
+TimeoutStartSec=infinity
+# Stay out of the way of interactive use
+Nice=10
+IOSchedulingClass=idle

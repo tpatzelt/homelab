@@ -1,0 +1,66 @@
+# Exclusions for popbook-snapshot.
+# NOTE: rsync runs with -x (one-file-system), so other mounted filesystems
+# (the NTFS partitions under /run/media, USB sticks, /boot) are already skipped.
+# The pseudo-filesystem entries below are belt-and-braces; -x leaves their
+# mountpoint directories in place as empty dirs, which is what a restore wants.
+
+/dev/*
+/proc/*
+/sys/*
+/run/*
+/tmp/*
+/mnt/*
+/media/*
+/lost+found
+/var/tmp/*
+/var/cache/pacman/pkg/*
+/swapfile
+/swap.img
+
+# --- reproducible tool caches -------------------------------------------
+/home/*/.cache
+/home/*/.local/share/Trash
+/home/*/.local/share/claude
+/home/*/.local/share/mise
+/home/*/.local/share/uv
+/home/*/.npm
+/home/*/.cargo/registry
+/home/*/go/pkg
+**/node_modules
+**/.venv
+**/target/debug
+**/target/release
+
+# --- browser / Electron caches: drop the cache, keep the profile --------
+# Brave: Greaselion alone is 745M across 181k files of regenerable component
+# data — excluding it is most of the reason this job finishes quickly.
+/home/*/.config/BraveSoftware/Brave-Browser/Greaselion
+/home/*/.config/BraveSoftware/Brave-Browser/component_crx_cache
+/home/*/.config/BraveSoftware/**/Cache
+/home/*/.config/BraveSoftware/**/Code Cache
+/home/*/.config/BraveSoftware/**/GPUCache
+/home/*/.config/BraveSoftware/**/GrShaderCache
+/home/*/.config/BraveSoftware/**/ShaderCache
+/home/*/.config/BraveSoftware/**/GPUPersistentCache
+/home/*/.config/BraveSoftware/**/GraphiteDawnCache
+/home/*/.config/BraveSoftware/**/DawnCache
+/home/*/.config/BraveSoftware/**/DawnWebGPUCache
+/home/*/.config/BraveSoftware/**/DawnGraphiteCache
+/home/*/.config/BraveSoftware/**/Service Worker/CacheStorage
+/home/*/.config/BraveSoftware/**/Service Worker/ScriptCache
+/home/*/.config/chromium/**/Cache
+/home/*/.config/chromium/**/Code Cache
+/home/*/.config/chromium/**/GPUCache
+/home/*/.config/Code/Cache
+/home/*/.config/Code/CachedData
+/home/*/.config/Code/CachedExtensionVSIXs
+/home/*/.config/Antigravity/Cache
+/home/*/.config/Antigravity/CachedData
+
+# --- bulk, re-downloadable ----------------------------------------------
+/home/*/Downloads
+
+# Everything Omarchy owns is deliberately NOT excluded:
+#   ~/.config/omarchy  ~/.config/hypr  ~/.config/waybar  ~/.config/walker
+#   ~/.config/mako  ~/.config/systemd/user  ~/.local/share/omarchy
+#   ~/.local/state/omarchy  and all of /etc
