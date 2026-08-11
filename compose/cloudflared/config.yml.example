@@ -13,4 +13,9 @@ ingress:
     originRequest:
       originServerName: myapp.example.com
 
+  - hostname: jonas.example.com
+    service: https://caddy:443
+    originRequest:
+      originServerName: jonas.example.com
+
   - service: http_status:404

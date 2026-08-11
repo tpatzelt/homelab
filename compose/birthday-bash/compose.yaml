@@ -1,0 +1,12 @@
+services:
+  birthday-bash:
+    image: ghcr.io/tpatzelt/birthday-bash:${BIRTHDAY_BASH_IMAGE_TAG}
+    container_name: birthday-bash
+    restart: unless-stopped
+    networks:
+      - caddy_network
+
+networks:
+  caddy_network:
+    external: true
+    name: caddy_network

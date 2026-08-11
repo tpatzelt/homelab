@@ -177,6 +177,11 @@
 		reverse_proxy annabel-rene-frontend:4321
 	}
 
+	@jonas host jonas.{$DOMAIN}
+	handle @jonas {
+		reverse_proxy birthday-bash:80
+	}
+
 	# Catch-all: Drop unhandled subdomains
 	handle {
 		abort
