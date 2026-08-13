@@ -28,7 +28,12 @@ locations:
     hooks:
       before:
         - echo "Generating list of containers to stop..."
-        - docker ps --format '{{.Names}}' | grep -vE '^(pihole)$' > /tmp/backup_containers.list
+        # Skip --rm containers: `docker stop` deletes them, so the `after` hook's
+        # strict `docker start` would fail on a container that no longer exists and
+        # turn a good backup into a false alert (happened 2026-08-13 with an
+        # ephemeral birthday-bash-e2e left running overnight). `if`/`fi` rather than
+        # `&&` so a trailing skipped container can't make the hook itself exit 1.
+        - docker ps --format '{{.Names}}' | grep -vE '^(pihole)$' | while read -r c; do if [ "$(docker inspect -f '{{.HostConfig.AutoRemove}}' "$c")" = "false" ]; then echo "$c"; fi; done > /tmp/backup_containers.list
         - if [ -s /tmp/backup_containers.list ]; then docker stop $(cat /tmp/backup_containers.list); fi
       
       after:
