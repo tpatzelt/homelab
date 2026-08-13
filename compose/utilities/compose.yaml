@@ -65,7 +65,12 @@ services:
       # data.ms in place on startup instead. Safe to leave on: the index is
       # derived data karakeep can rebuild, and the alternative is a search
       # outage after each bump.
-      MEILI_EXPERIMENTAL_DUMPLESS_UPGRADE: "true"
+      #
+      # The flag graduated out of experimental and was renamed: the old
+      # MEILI_EXPERIMENTAL_DUMPLESS_UPGRADE is silently ignored by 1.53.0, so
+      # the 1.50.0 -> 1.53.0 bump crash-looped exactly as before (2026-08-13).
+      # A rename like this is invisible to Renovate, which only moves the tag.
+      MEILI_UPGRADE_DB: "true"
     volumes:
       - /opt/dockerdata/karakeep/meilisearch:/meili_data
     healthcheck:
