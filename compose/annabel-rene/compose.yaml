@@ -7,6 +7,12 @@ services:
       PUBLIC_SITE_URL: ${ANNABEL_RENE_PUBLIC_SITE_URL}
       SESSION_SECRET: ${ANNABEL_RENE_SESSION_SECRET}
       ADMIN_PASSWORD: ${ANNABEL_RENE_ADMIN_PASSWORD}
+      # The shared site password and the riddle shown next to it on /login.
+      # Since the 2026-08 release this is the app's only source for the
+      # password — nothing password-related is stored in its SQLite DB any
+      # more, so an empty FRIENDS_PASSWORD locks every friend out.
+      FRIENDS_PASSWORD: ${ANNABEL_RENE_FRIENDS_PASSWORD}
+      FRIENDS_PASSWORD_HINT: ${ANNABEL_RENE_FRIENDS_PASSWORD_HINT}
       DATA_DIR: /data
     volumes:
       - /opt/dockerdata/annabel-rene/data:/data
