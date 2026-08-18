@@ -39,13 +39,25 @@ locations:
       after:
         - if [ -s /tmp/backup_containers.list ]; then docker start $(cat /tmp/backup_containers.list) || true; fi
         - sleep 5
-        - if [ -s /tmp/backup_containers.list ]; then docker start $(cat /tmp/backup_containers.list); fi
+        # Strict pass, but existence-aware: a container removed while the backup ran
+        # (an ephemeral compose/test stack torn down by its own tooling — e.g. the
+        # annabel-rene-baum playwright suite) is skipped rather than failing the run,
+        # the same false alert --rm containers used to cause. A container that still
+        # exists but refuses to start sets fail=1 and still alerts, so real breakage
+        # is not masked.
+        - if [ -s /tmp/backup_containers.list ]; then fail=0; while read -r c; do if docker inspect "$c" >/dev/null 2>&1; then docker start "$c" >/dev/null || fail=1; else echo "skipping $c (removed while the backup ran)"; fi; done < /tmp/backup_containers.list; [ "$fail" -eq 0 ]; fi
         - rm -f /tmp/backup_containers.list
       
       failure:
         - if [ -s /tmp/backup_containers.list ]; then docker start $(cat /tmp/backup_containers.list) || true; fi
         - sleep 5
-        - if [ -s /tmp/backup_containers.list ]; then docker start $(cat /tmp/backup_containers.list); fi
+        # Strict pass, but existence-aware: a container removed while the backup ran
+        # (an ephemeral compose/test stack torn down by its own tooling — e.g. the
+        # annabel-rene-baum playwright suite) is skipped rather than failing the run,
+        # the same false alert --rm containers used to cause. A container that still
+        # exists but refuses to start sets fail=1 and still alerts, so real breakage
+        # is not masked.
+        - if [ -s /tmp/backup_containers.list ]; then fail=0; while read -r c; do if docker inspect "$c" >/dev/null 2>&1; then docker start "$c" >/dev/null || fail=1; else echo "skipping $c (removed while the backup ran)"; fi; done < /tmp/backup_containers.list; [ "$fail" -eq 0 ]; fi
         - rm -f /tmp/backup_containers.list
 
   secrets:
