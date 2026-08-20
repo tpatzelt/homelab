@@ -4,7 +4,7 @@ services:
     # downloads and in-browser play. Redis/Valkey is embedded in the full
     # image, so /redis-data must be persisted or in-flight tasks are lost.
     container_name: romm
-    image: rommapp/romm:5.0.0
+    image: rommapp/romm:5.2.0
     env_file: ./.env
     environment:
       - TZ=${TZ}
