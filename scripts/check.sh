@@ -330,6 +330,59 @@ print("    (warnings only — some services intentionally track latest; do not m
 PY
 }
 
+check_image_drift() {
+  # Compares each running container's image against the tag its compose.yaml
+  # declares. This is the feedback loop for the gap between "Renovate PR merged"
+  # and "actually deployed" — nine bumps accumulated undeployed before this
+  # existed. Warn-only and host-only: CI has no running containers, so it
+  # reports "skipped" there rather than failing.
+  WORK_DIR="$WORK_DIR" python3 - <<'PY'
+import glob, json, os, subprocess
+
+def running():
+    try:
+        out = subprocess.run(["docker", "ps", "--format", "{{.Names}}"],
+                             capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    return set(n for n in out.stdout.split() if n)
+
+live = running()
+if live is None:
+    print("    skipped: no reachable docker daemon (expected in CI)")
+    raise SystemExit(0)
+if not live:
+    print("    skipped: no running containers (expected in CI)")
+    raise SystemExit(0)
+
+drift = 0
+checked = 0
+for path in sorted(glob.glob(os.path.join(os.environ["WORK_DIR"], "stacks", "*", "config.json"))):
+    stack = os.path.basename(os.path.dirname(path))
+    for svc, spec in json.load(open(path)).get("services", {}).items():
+        if "build" in spec:
+            continue  # built locally; no registry tag to compare
+        name = spec.get("container_name") or svc
+        want = spec.get("image", "")
+        if name not in live or not want:
+            continue
+        got = subprocess.run(
+            ["docker", "inspect", "-f", "{{.Config.Image}}", name],
+            capture_output=True, text=True).stdout.strip()
+        checked += 1
+        if got and got != want:
+            drift += 1
+            print(f"    WARN: {stack}/{svc}: running {got} but compose declares {want}")
+
+if drift:
+    print(f"    ({drift} container(s) drifted of {checked} checked — redeploy with scripts/restart-services.sh)")
+else:
+    print(f"    all {checked} running container(s) match their compose tag")
+PY
+}
+
 # --- runner -----------------------------------------------------------------
 
 RESULTS=()
@@ -364,6 +417,7 @@ run_check "required host files present"        check_required_host_files
 run_check "shellcheck"                         check_shellcheck
 run_check "yamllint"                           check_yamllint
 run_check "image pinning report (warn-only)"   check_image_pins
+run_check "image drift (host-only, warn-only)"  check_image_drift
 
 printf '\n================ summary ================\n'
 printf '%s\n' "${RESULTS[@]}"
