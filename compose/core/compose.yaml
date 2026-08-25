@@ -1,7 +1,7 @@
 services:
   dozzle:
     container_name: dozzle
-    image: amir20/dozzle:v10.7.1
+    image: amir20/dozzle:v10.7.2
     env_file: ./.env
     restart: unless-stopped
     volumes:
@@ -48,7 +48,7 @@ services:
 
   heimdall:
     container_name: heimdall
-    image: lscr.io/linuxserver/heimdall:2.8.1
+    image: lscr.io/linuxserver/heimdall:2.8.2
     env_file: ./.env
     restart: unless-stopped
     volumes:
@@ -63,7 +63,7 @@ services:
       - caddy_network
 
   beszel:
-    image: henrygd/beszel:0.18.7
+    image: henrygd/beszel:0.18.8
     container_name: beszel
     env_file: ./.env
     restart: unless-stopped
@@ -81,7 +81,7 @@ services:
       - caddy_network
 
   beszel-agent:
-    image: henrygd/beszel-agent:0.18.7
+    image: henrygd/beszel-agent:0.18.8
     container_name: beszel-agent
     env_file: ./.env
     restart: unless-stopped
