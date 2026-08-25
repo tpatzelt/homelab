@@ -41,15 +41,17 @@ diff <(docker exec caddy cat /etc/caddy/Caddyfile) compose/caddy/Caddyfile
 ```
 Only reach for `caddy reload` when the file was edited in place (e.g. a shell append). The same trap applies to every other single-file bind mount — the remaining one is `compose/caddy/Caddyfile`. The two files that used to be single-file binds, cloudflared's `config.yml` and the GeoLite2 DB, were the worse *missing*-source variant of this trap (Docker silently creates an empty **directory** when the bind source doesn't exist, and a running container keeps the deleted inode open so the rot only surfaces on the next recreate). Both have been moved under `/opt/dockerdata` and are now mounted as **directories** (`/opt/dockerdata/cloudflared` → `/etc/cloudflared`, `/opt/dockerdata/caddy/geoip` → `/opt/geoip`), which sidesteps the missing-file-becomes-directory failure and — being under `/opt/dockerdata` — puts both inside autorestic's backup. `check.sh`'s "required host files present" check asserts they exist as regular files so a missing one fails validation instead of a redeploy.
 
-Validation is automated: run `./scripts/check.sh` after any compose/Caddyfile/env-template change. It works offline against dummy env files generated from `secrets/*.env.example` and checks: `docker compose config` on every stack, env-template completeness, `caddy validate`, Caddyfile-upstream/compose consistency (gluetun-aware), autorestic `LOCATIONS` sync, per-stack env-example presence, README service-table coverage, shellcheck, yamllint (config in `.yamllint`), and a warn-only image-pinning report. CI (`.github/workflows/check.yml`) runs the same script on push/PR.
+Validation is automated: run `./scripts/check.sh` after any compose/Caddyfile/env-template change. It works offline against dummy env files generated from `secrets/*.env.example` and checks: `docker compose config` on every stack, env-template completeness, `caddy validate`, Caddyfile-upstream/compose consistency (gluetun-aware), autorestic `LOCATIONS` sync, per-stack env-example presence, README service-table coverage, shellcheck, yamllint (config in `.yamllint`), a warn-only image-pinning report, and a warn-only **image-drift** gate. The drift gate compares each *running* container's image against the tag its `compose.yaml` declares — it exists because nine merged Renovate bumps once sat undeployed with nothing to surface the gap. It is host-only and self-skipping: CI stages the stacks offline with no docker daemon, so it prints `skipped` there rather than failing the build. CI (`.github/workflows/check.yml`) runs the same script on push/PR.
 
 ## Architecture
 
 ### Stacks (`compose/<name>/compose.yaml`)
 - **caddy** — reverse proxy (custom-built image with Cloudflare DNS + CrowdSec bouncer plugins, see `compose/caddy/Dockerfile`), plus `goaccess` (log analytics UI) and `crowdsec` (intrusion detection feeding the Caddy bouncer). This is the only stack that binds host ports 80/443.
 - **core** — dozzle (log viewer), pihole (DNS), heimdall (dashboard), beszel/beszel-agent (monitoring; the agent runs with `network_mode: host`).
+  - dozzle runs with `DOZZLE_ENABLE_SHELL` and `DOZZLE_ENABLE_ACTIONS` against a **read-write** docker socket, so reaching its UI is equivalent to root on the host. It ships no auth of its own and `*.dev` resolves LAN-wide, so the `basic_auth` block on its Caddy route is the only thing gating that — it is load-bearing, not decoration. Do not remove it without turning those two features off first. The credential lives in `secrets/.caddy.env` as `DOZZLE_AUTH_USER`/`DOZZLE_AUTH_HASH`; regenerate with `docker exec caddy caddy hash-password --plaintext '<pw>'`.
 - **arr** — `gluetun` (VPN, AirVPN/Netherlands) plus qbittorrent/sonarr/radarr/lidarr/bazarr/prowlarr, all attached via `network_mode: service:gluetun` so their traffic routes through the VPN tunnel. Only `gluetun` itself joins `caddy_network`, so Caddy reverse-proxies to `gluetun:<port>` for every *arr service, not to the service's own container name.
   - The `depends_on: gluetun: condition: service_healthy` on **every** dependent service is load-bearing anti-leak config, not startup cosmetics — do not drop it when adding a service. gluetun's firewall accepts `ESTABLISHED,RELATED`, so a connection opened in the ~10ms before the firewall loads keeps flowing over `eth0` (the host's real IP) for its lifetime. Gating every container on *healthy* means none of them can race that window. Upstream's conntrack-flush fix (commit `625a63e`, 2026-02-23) is not in any tagged release — it landed after v3.41.1 and exists only on `:latest`, which is gluetun's dev tag and not worth taking for a window this setup already closes.
+  - gluetun publishes **no** host ports. It used to publish 8888/tcp (HTTP proxy) and 8388/tcp+udp (Shadowsocks) on `0.0.0.0` for services that are both disabled in its config (`HTTPPROXY` empty, `SHADOWSOCKS=off`) — LAN-facing surface that forwarded to nothing. If a proxy is ever wanted, re-add the port **and** enable it in `.arr.env`; a published port alone does nothing. The *arr web UIs are unaffected either way: Caddy reaches them over `caddy_network`, not via published host ports.
   - qbittorrent additionally pins `Session\Interface=tun0` in its config — with no `tun0` it has no socket to bind, independent of iptables. The other five are *not* interface-bound and rely entirely on the `depends_on` above.
   - gluetun was on the floating `qmcgaw/gluetun:v3` major tag until 2026-07-24; it is now pinned like everything else. A floating major slips past both Renovate (the tag never goes stale, so no PR is ever opened) and `check.sh`'s pinning report (which only flags `latest`/untagged) — while `restart-services.sh`'s per-stack `pull` silently upgrades it on the next redeploy. That is the path by which a regressed release reaches the container guarding the real IP.
 - **cloudflared** — a locally-managed Cloudflare Tunnel (ingress rules in `/opt/dockerdata/cloudflared/config.yml`, kept out of the repo because it carries the tunnel UUID and real hostnames — `compose/cloudflared/config.yml.example` is the tracked template; credential alongside it at `/opt/dockerdata/cloudflared/creds.json`, both mounted via the single directory bind `/opt/dockerdata/cloudflared` → `/etc/cloudflared`). This is the only way anything in this homelab is reachable from the internet; no router ports are forwarded. It deliberately proxies to `https://caddy:443` rather than straight to an app container, so tunnelled traffic still passes CrowdSec, the security headers, and the access log. It has no `.env` — a locally-managed tunnel carries no env-var secrets, so it intentionally skips the `secrets/` symlink convention below.
@@ -94,10 +96,43 @@ All service state lives under `/opt/dockerdata/<service>/`; media/user data live
 
 Backup monitoring is a Healthchecks.io dead-man switch: the script pings `$HEALTHCHECKS_URL` (from `secrets/.autorestic.env`) on start, success, and failure, and Healthchecks alerts if a weekly ping goes missing. After each backup the script independently verifies that every location produced a snapshot dated today and treats a missing snapshot as failure — the `LOCATIONS` list in `autorestic.sh` must be kept in sync with the location names in `.autorestic.yml`. Note that autorestic does **not** auto-initialize a fresh repo: on a brand-new/wiped backup disk, `restic init` must be run manually once (with `RESTIC_REPOSITORY=/mnt/backup/restic-backups` and the password from `secrets/.autorestic.env`) — a failed run due to a missing repo is the intended alert, not something the weekly script should self-heal. The repo was wiped and re-initialized 2026-07-12 after ~6 months of silent failures (unexported/mangled `RESTIC_PASSWORD`, no cron log); restore was last tested end-to-end the same day.
 
+### Host monitoring
+
+`smartd` watches `/dev/sda` (boot SSD) and `/dev/sdc` (backup HDD) with nightly short
+self-tests and a weekly long test on sda; alerts run `/usr/local/sbin/smartd-notify`,
+which logs to `/var/log/smartd-alerts.log` and pings the Healthchecks URL in
+`/etc/smartd-notify.url`. A daily `disk-health-heartbeat.timer` pings the same check on
+success, so it degrades into a dead-man switch — a silently dead smartd goes red rather
+than looking identical to healthy disks.
+
+**`/dev/sdb` is deliberately absent from `smartd.conf`.** It is the 3.6 TB USB "Expansion"
+enclosure holding `/mnt/storage` — i.e. all the user data — and its bridge passes no SMART
+in any mode (auto/sat/scsi all probed and failed, 2026-08-25). So the one disk with no
+health telemetry is also the one holding the only copy of everything. Listing it would
+create a check that looks alive and reports nothing, which is worse than its absence.
+Re-probe with `smartctl -d sat -i /dev/sdb` if the enclosure is ever swapped.
+
+Docker's default log driver is capped in `/etc/docker/daemon.json` (`max-size 10m`,
+`max-file 3`) — this applies at container *create* time, so a bare `docker restart` will
+not pick it up; a `restart-services.sh` pass will. `journald` is capped at 500M.
+A `docker-prune.timer` runs monthly; it deliberately uses `docker system prune -f`
+**without** `-a` (see the alpine-chrome note below).
+
+### Images that can no longer be pulled
+
+`gcr.io/zenika-hub/alpine-chrome:124` (karakeep's browser sidecar) **404/403s on pull** —
+the upstream GCR project has billing disabled, so the tag is gone for good. The container
+runs from a locally cached image that cannot be replaced if it is ever collected. This is
+why the monthly prune omits `-a` and why `restart-services.sh` aborts on the `utilities`
+stack (its `set -e` correctly stops before the `down`, so nothing breaks — but that stack
+must then be deployed per-service, skipping karakeep-chrome). The real fix is to move
+karakeep onto a maintained Chrome/Chromium image.
+
 ## Conventions (from prior project instructions)
 - Service names: lowercase with hyphens (`immich-server`, not `immich_server`).
 - Persistent volumes always mount to an absolute host path under `/opt/dockerdata/<service>`.
 - Env vars via `env_file: ./.env`, backed by the `secrets/` symlink pattern above — never hardcode secrets into a `compose.yaml`.
+  - **Compose v2 interpolates `env_file` values**, so any `$` in a secret must be written `$$`. A bcrypt hash is the common casualty: an unescaped `$2a$14$XXXX` silently becomes `$2a$14` with the rest eaten as an undefined variable, and Caddy then rejects every valid login with a 401 while logging nothing useful. Check what actually arrived with `docker exec <ctr> printenv <VAR>` rather than trusting the file.
 - Pin image versions (e.g. `image:1.2.3`, or `image@sha256:…` for digest-pinned ones) — never `:latest`. Every image is pinned; the sole exception is the owner's personal `ghcr.io/tpatzelt/*` images, which are deployed by their own pipelines and intentionally track a rolling tag. Version bumps arrive as [Renovate](https://docs.renovatebot.com/) PRs (config in `.github/renovate.json5`), CI-validated at config level (not runtime), so hand-editing a tag is rarely needed — `renovate.json5`'s ignore list is the source of truth for what is intentionally unpinned.
   - A tag can *look* pinned and still go stale silently, in two opposite ways. A floating major (gluetun's old `v3`) never goes stale, so Renovate opens no PR while `restart-services.sh`'s per-stack `pull` upgrades it anyway. A tag Renovate cannot parse as a version is the mirror image: qbittorrent sat on `lscr.io/linuxserver/qbittorrent:20.04.1` — a 2021 LinuxServer base-OS-style tag — for ~5 years with no PR ever opened, because there is no newer tag in that format to compare against. Both pass `check.sh`'s pinning report, which only flags `latest`/untagged. When adding an image, prefer a tag whose format Renovate can order (`5.2.3`, or `5.2.3-libtorrentv1` — a suffix is kept as a compatibility constraint), and treat "Renovate has never opened a PR for this image" as a smell rather than as stability.
 - Keep additions minimal — only add services/config that are essential to a given stack; commented-out service blocks (see `compose/utilities/compose.yaml`) are intentionally disabled, not dead code to delete.
