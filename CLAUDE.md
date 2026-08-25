@@ -105,12 +105,30 @@ which logs to `/var/log/smartd-alerts.log` and pings the Healthchecks URL in
 success, so it degrades into a dead-man switch — a silently dead smartd goes red rather
 than looking identical to healthy disks.
 
-**`/dev/sdb` is deliberately absent from `smartd.conf`.** It is the 3.6 TB USB "Expansion"
-enclosure holding `/mnt/storage` — i.e. all the user data — and its bridge passes no SMART
-in any mode (auto/sat/scsi all probed and failed, 2026-08-25). So the one disk with no
-health telemetry is also the one holding the only copy of everything. Listing it would
-create a check that looks alive and reports nothing, which is worse than its absence.
-Re-probe with `smartctl -d sat -i /dev/sdb` if the enclosure is ever swapped.
+**`/dev/sdb` is deliberately absent from `smartd.conf`.** It is the 4 TB Seagate
+"Expansion Portable" (USB `0bc2:231a`, `uas` driver) holding `/mnt/storage` — i.e. all the
+user data. The bridge **does not implement ATA passthrough**: every real variant
+(`auto`, `sat`, `sat,12`, `sat,16`, `usbcypress`, `usbprolific`, `usbsunplus`,
+`sntjmicron`, …) fails with `scsi error unsupported field in scsi command`, and
+`-T permissive` confirms IDENTIFY words 82-87 come back empty. `-d sat,auto` and
+`-d scsi` *appear* to work but only reach SCSI INQUIRY — they return identity while
+reporting `SMART support is: Unavailable`, which is easy to misread as success. Do not
+"fix" this by adding one of those to `smartd.conf`; it would produce a check that runs
+happily and tells you nothing. Verified exhaustively 2026-08-25.
+
+Because there is no SMART, `sdb` is monitored indirectly by
+`/usr/local/sbin/disk-health-heartbeat`: ext4's `errors_count`
+(`/sys/fs/ext4/sdb2/errors_count`), the superblock's `Filesystem state`, kernel I/O /
+`uas_eh` / `task abort` traces from the last 24 h, and the age of the last fsck. This is a
+genuinely weaker signal than SMART — there is no reallocated- or pending-sector early
+warning, so it reports damage that has already happened rather than predicting it. It is
+what the enclosure allows. Re-probe if the enclosure is ever swapped; a different bridge
+may well support SAT.
+
+Note `sdb2` is a plain partition, not LVM, so `e2scrub` cannot check it online — the
+`e2scrub_all.timer` silently skips it. `Maximum mount count` is `-1` and the last fsck was
+2025-11-15, so **nothing forces a filesystem check on the 4 TB data disk**. A check
+requires unmounting `/mnt/storage`, which means stopping most containers.
 
 Docker's default log driver is capped in `/etc/docker/daemon.json` (`max-size 10m`,
 `max-file 3`) — this applies at container *create* time, so a bare `docker restart` will
