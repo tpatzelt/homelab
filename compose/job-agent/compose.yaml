@@ -1,6 +1,10 @@
 services:
   job-agent:
     image: ghcr.io/tpatzelt/job-application-agent:latest
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     container_name: job-agent
     restart: unless-stopped
     env_file: ./.env

@@ -53,6 +53,10 @@ services:
   karakeep-meilisearch:
     container_name: karakeep-meilisearch
     image: getmeili/meilisearch:v1.53.1
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     restart: unless-stopped
     env_file:
       - .env

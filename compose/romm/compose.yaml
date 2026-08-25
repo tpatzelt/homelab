@@ -43,6 +43,10 @@ services:
     # MariaDB backing store for RomM
     container_name: romm-db
     image: mariadb:11.8.8
+    deploy:
+      resources:
+        limits:
+          memory: 1G
     env_file: ./.env
     environment:
       - MARIADB_ROOT_PASSWORD=${ROMM_DB_ROOT_PASSWORD}
