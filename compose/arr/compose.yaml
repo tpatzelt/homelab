@@ -8,10 +8,11 @@ services:
       - NET_ADMIN  # Required for VPN tunnel management
     devices:
       - /dev/net/tun:/dev/net/tun
-    ports:
-      - 8888:8888/tcp # HTTP proxy
-      - 8388:8388/tcp # Shadowsocks
-      - 8388:8388/udp # Shadowsocks
+    # No ports published: gluetun's HTTPPROXY and SHADOWSOCKS are both off, so
+    # 8888/8388 published nothing but an open-looking listener on 0.0.0.0 that
+    # any LAN device could probe. The *arr web UIs are not affected — they are
+    # reached through Caddy over caddy_network, not via published host ports.
+    # If a proxy is ever wanted, re-add the port *and* enable it in .arr.env.
     environment:
       - VPN_SERVICE_PROVIDER=airvpn
       - SERVER_COUNTRIES=Netherlands

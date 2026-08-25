@@ -20,6 +20,14 @@
 
 	@dozzle host dozzle.dev.{$DOMAIN}
 	handle @dozzle {
+		# Dozzle runs with DOZZLE_ENABLE_SHELL + DOZZLE_ENABLE_ACTIONS against a
+		# read-write docker socket, so reaching its UI is equivalent to root on the
+		# host. It ships no auth of its own here and *.dev resolves LAN-wide, so
+		# this basic_auth is the only thing gating that. Do not remove it without
+		# disabling those two features first.
+		basic_auth {
+			{$DOZZLE_AUTH_USER} {$DOZZLE_AUTH_HASH}
+		}
 		reverse_proxy dozzle:8080
 	}
 
