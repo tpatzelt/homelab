@@ -1,0 +1,127 @@
+services:
+  orca:
+    # Built locally from ./Dockerfile — upstream publishes desktop artifacts
+    # (AppImage/deb/rpm/dmg/exe) but no container image. Same pattern as the
+    # caddy stack: a fixed local tag plus `build:`.
+    image: orca-ade
+    build:
+      context: .
+      args:
+        ORCA_VERSION: ${ORCA_VERSION}
+        CLAUDE_CODE_VERSION: ${CLAUDE_CODE_VERSION}
+        GH_VERSION: ${GH_VERSION}
+        PUID: ${PUID}
+        PGID: ${PGID}
+    container_name: orca
+    restart: unless-stopped
+    env_file: ./.env
+    environment:
+      TZ: ${TZ}
+      # Point the bundled docker CLI at the dind sidecar instead of a host
+      # socket. A host-socket mount would make every agent Orca launches
+      # root-equivalent on the host; the sidecar keeps that blast radius
+      # inside its own daemon.
+      DOCKER_HOST: tcp://orca-dind:2376
+      DOCKER_TLS_VERIFY: "1"
+      DOCKER_CERT_PATH: /home/orca/.docker/certs
+      # No GPU in the container; keep Electron on the software rasterizer.
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      # Claude Code sits in root-owned /usr/local at the version the image was
+      # built with. Left enabled, its updater cannot write there and instead
+      # migrates the CLI into ~/.local — which is inside the persistent home
+      # mount, so the migrated copy would win on PATH and silently outrank
+      # CLAUDE_CODE_VERSION from then on. Bump the build arg and rebuild.
+      DISABLE_AUTOUPDATER: "1"
+    command:
+      - serve
+      - --port
+      - "6768"
+      # Only the address advertised to clients in the pairing offer — it does
+      # not change the bind address, which stays 0.0.0.0:6768. Clients dial
+      # this, so it must be what the laptop can actually reach (the Caddy
+      # hostname), not the container name.
+      - --pairing-address
+      - ${ORCA_PAIRING_ADDRESS}
+    volumes:
+      # Whole home, not just .config: Orca keeps its state in ~/.config/orca
+      # and ~/.config/Orca, but the agent CLIs Orca launches keep their
+      # credentials elsewhere under $HOME. Mounting only .config would make
+      # every agent re-authenticate after a restart.
+      - /opt/dockerdata/orca/home:/home/orca
+      # Same path inside and out. This is load-bearing for docker-in-docker:
+      # a `docker run -v $PWD:/app` issued from an Orca terminal is resolved
+      # by the *dind* daemon, which mounts the sidecar's filesystem, not this
+      # container's. Mounting the coding tree at an identical path in both
+      # containers is what makes that bind resolve to the same files.
+      - ${CODING_DIR}:${CODING_DIR}
+      - /opt/dockerdata/orca/certs/client:/certs/client:ro
+    deploy:
+      resources:
+        limits:
+          # Electron plus several concurrent agent processes; the host has
+          # 31G and this is the largest single consumer in the stack.
+          memory: 8G
+    depends_on:
+      orca-dind:
+        condition: service_healthy
+    healthcheck:
+      # The listener speaks WebSocket, so an HTTP probe is not meaningful —
+      # assert only that the port accepts a TCP connection. bash's /dev/tcp
+      # avoids adding curl/nc to the probe path.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/6768"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # Electron cold start behind Xvfb, plus pairing init.
+      start_period: 120s
+    networks:
+      - default
+      - caddy_network
+
+  orca-dind:
+    image: docker:29.7.2-dind
+    container_name: orca-dind
+    restart: unless-stopped
+    # An isolated Docker daemon needs its own namespaces, cgroup writes and
+    # overlay mounts. This is the cost of *not* handing agents the host
+    # socket: the privilege stays in a container that holds no host state and
+    # is reachable only from `orca` over this stack's private bridge.
+    privileged: true
+    environment:
+      TZ: ${TZ}
+      # Serve TLS on 2376 and drop the client certs where `orca` can copy
+      # them. Without this the daemon would fall back to plaintext 2375.
+      DOCKER_TLS_CERTDIR: /certs
+      # The generated server certificate defaults to SANs of `docker`, the
+      # container ID and `localhost` — upstream's documented pattern is a
+      # `docker` network alias. Dialing the service by its real name instead
+      # fails verification ("certificate is valid for docker, <id>,
+      # localhost, not orca-dind"), so the name is added explicitly. The
+      # entrypoint regenerates the public certs on every start to pick up SAN
+      # changes, so this needs no manual wipe of the persisted /certs.
+      DOCKER_TLS_SAN: DNS:orca-dind
+    volumes:
+      - /opt/dockerdata/orca/certs/ca:/certs/ca
+      - /opt/dockerdata/orca/certs/client:/certs/client
+      - /opt/dockerdata/orca/dind:/var/lib/docker
+      # Must match the mount in `orca` exactly — see the note there.
+      - ${CODING_DIR}:${CODING_DIR}
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    healthcheck:
+      # Probe the local unix socket rather than the TLS endpoint so the check
+      # does not depend on certificate generation ordering.
+      test: ["CMD", "docker", "-H", "unix:///var/run/docker.sock", "info"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - default
+
+networks:
+  caddy_network:
+    external: true
+    name: caddy_network
