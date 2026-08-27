@@ -42,7 +42,7 @@ services:
   romm-db:
     # MariaDB backing store for RomM
     container_name: romm-db
-    image: mariadb:11.8.9
+    image: mariadb:12.3.3
     deploy:
       resources:
         limits:
