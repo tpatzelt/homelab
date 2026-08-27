@@ -147,6 +147,25 @@
 		reverse_proxy job-agent:8765
 	}
 
+	# Orca ADE. Port 6768 carries two things: the runtime WebSocket, and the
+	# browser client Orca serves at /web-index.html. One reverse_proxy covers
+	# both — Caddy upgrades the WebSocket transparently. Note that the bare
+	# path / is not a page; the way in is the "Web client URL" printed at
+	# startup, which carries the pairing offer in its URL fragment.
+	#
+	# Reaching a paired Orca runtime means running arbitrary commands as the
+	# service account, in the bind-mounted coding tree, against the stack's
+	# docker-in-docker daemon. Orca authenticates clients itself with
+	# per-device revocable pairing tokens, so this is not the unauthenticated
+	# case dozzle is — but upstream is explicit that the port must not be
+	# exposed to the internet. Keeping it on the LAN-only *.dev wildcard is
+	# that constraint: do not add an ingress rule for it in cloudflared's
+	# config.yml, and do not move it to the public *.{$DOMAIN} block.
+	@orca host orca.dev.{$DOMAIN}
+	handle @orca {
+		reverse_proxy orca:6768
+	}
+
 	# djcc — the DJ booth. Every control on the page is live and there is no
 	# authentication of any kind: whoever loads it can retune, reload or stop
 	# the set. The LAN-only *.dev wildcard is the only thing gating that, so do
