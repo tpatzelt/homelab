@@ -1,15 +1,13 @@
 ---
 services:
   djcc:
-    # Built locally from the app's own repo — djcc publishes no image. The
-    # Dockerfile is not in this repo: it belongs next to the source it builds,
-    # so the context points at the checkout (DJCC_SRC).
-    # Neither Renovate nor check.sh's pinning report can see a locally built
-    # image; rebuild by hand after pulling the app:
-    #   docker compose -f compose/djcc/compose.yaml build djcc
-    image: djcc-booth
-    build:
-      context: ${DJCC_SRC}
+    # Built and published by the app's own repo (github.com/tpatzelt/djcc,
+    # .github/workflows/publish-ghcr.yml) on every push to main, gated on its
+    # test suite. The rolling `latest` is deliberate and is why renovate.json5
+    # ignores ghcr.io/tpatzelt/* — that ignore list is this repo's source of
+    # truth for what is intentionally unpinned. Every build also publishes an
+    # immutable sha-<short>; to roll back, pin one of those here instead.
+    image: ghcr.io/tpatzelt/djcc:latest
     container_name: djcc
     user: "${PUID}:${PGID}"
     restart: unless-stopped
@@ -54,9 +52,7 @@ services:
   # race the booth for the index file — run it with the booth stopped:
   #   docker compose -f compose/djcc/compose.yaml run --rm djcc-scan
   djcc-scan:
-    image: djcc-booth
-    build:
-      context: ${DJCC_SRC}
+    image: ghcr.io/tpatzelt/djcc:latest
     profiles: ["tools"]
     user: "${PUID}:${PGID}"
     env_file: ./.env
