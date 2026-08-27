@@ -135,11 +135,6 @@
 		reverse_proxy navidrome:4533
 	}
 
-	@romm host romm.dev.{$DOMAIN}
-	handle @romm {
-		reverse_proxy romm:8080
-	}
-
 	# Read-only monitoring UI for the job agent. It ships no authentication of
 	# its own, so it must stay on the LAN-only *.dev wildcard.
 	@jobagent host jobagent.dev.{$DOMAIN}
