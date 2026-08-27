@@ -147,6 +147,22 @@
 		reverse_proxy job-agent:8765
 	}
 
+	# djcc — the DJ booth. Every control on the page is live and there is no
+	# authentication of any kind: whoever loads it can retune, reload or stop
+	# the set. The LAN-only *.dev wildcard is the only thing gating that, so do
+	# not add a cloudflared ingress rule for this host or move it to the public
+	# block.
+	@djcc host djcc.dev.{$DOMAIN}
+	handle @djcc {
+		# Two long-lived responses share this upstream: /ws (a 15 Hz state feed)
+		# and /stream.mp3 (a live MP3 that never ends). flush_interval -1 turns
+		# off response buffering for both — with buffering the browser's audio
+		# element waits on a full buffer before it plays anything.
+		reverse_proxy djcc:8765 {
+			flush_interval -1
+		}
+	}
+
 	# Catch-all
 	handle {
 		abort

@@ -1,0 +1,73 @@
+---
+services:
+  djcc:
+    # Built locally from the app's own repo — djcc publishes no image. The
+    # Dockerfile is not in this repo: it belongs next to the source it builds,
+    # so the context points at the checkout (DJCC_SRC).
+    # Neither Renovate nor check.sh's pinning report can see a locally built
+    # image; rebuild by hand after pulling the app:
+    #   docker compose -f compose/djcc/compose.yaml build djcc
+    image: djcc-booth
+    build:
+      context: ${DJCC_SRC}
+    container_name: djcc
+    user: "${PUID}:${PGID}"
+    restart: unless-stopped
+    env_file: ./.env
+    environment:
+      TZ: ${TZ}
+      # Pinned here rather than left to the image default. `env_file` injects
+      # every variable in the file into the container, so naming the host-side
+      # crate path DJCC_MUSIC_DIR would send a host path *into* the container,
+      # where it does not exist — the entrypoint would then abort with "no
+      # crate at ...". The host side is DJCC_CRATE_DIR for that reason, and
+      # these two re-assert the in-container paths regardless.
+      DJCC_MUSIC_DIR: /music
+      DJCC_DATA_DIR: /data
+      # No sound card in a container: the set is rendered in realtime and
+      # thrown away, and is heard by opening /stream.mp3 (the booth UI's
+      # "listen" button). `auto` would pick the same backend, but only after
+      # probing PortAudio — say what we mean.
+      DJCC_OUTPUT: "null"
+    volumes:
+      # Read-only: djcc only ever reads records. Everything it writes (the
+      # analysis index and the decoded-PCM cache) goes to /data.
+      - "${DJCC_CRATE_DIR}:/music:ro"
+      - "/opt/dockerdata/djcc/data:/data"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8765/api/state"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # Deliberately long. On a cold /data the container analyses the whole
+      # crate before it opens the port — roughly 14s per record, so ~25min for
+      # the current 108. The index is on the bind mount and survives restarts,
+      # so this window is only ever paid after a wipe; warming it up front with
+      #   docker compose -f compose/djcc/compose.yaml run --rm djcc-scan
+      # keeps a first deploy from sitting here.
+      start_period: 1800s
+    networks:
+      - caddy_network
+
+  # One-shot crate scan, for warming or refreshing the index without waiting on
+  # the service's start_period. Never started by `up` (profiles), so it cannot
+  # race the booth for the index file — run it with the booth stopped:
+  #   docker compose -f compose/djcc/compose.yaml run --rm djcc-scan
+  djcc-scan:
+    image: djcc-booth
+    build:
+      context: ${DJCC_SRC}
+    profiles: ["tools"]
+    user: "${PUID}:${PGID}"
+    env_file: ./.env
+    environment:
+      TZ: ${TZ}
+    entrypoint: ["djcc", "--music", "/music", "--data", "/data", "scan"]
+    volumes:
+      - "${DJCC_CRATE_DIR}:/music:ro"
+      - "/opt/dockerdata/djcc/data:/data"
+
+networks:
+  caddy_network:
+    external: true
+    name: caddy_network

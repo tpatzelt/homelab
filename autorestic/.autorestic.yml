@@ -25,6 +25,18 @@ locations:
     from: /opt/dockerdata
     to: backup-hdd
     forget: prune 
+    # djcc's PCM cache is many GB of regenerable data: every record in the
+    # crate is decoded once to raw float32 and memory-mapped so deck loads
+    # never wait on a decoder. That is ~150 MB per record (~16 GB for the
+    # current crate) and `djcc scan` rebuilds all of it from the MP3s, which
+    # are themselves backed up under /mnt/storage/data. The analysis index
+    # next to it (/opt/dockerdata/djcc/data/library.json) is NOT excluded — it
+    # is small and holds the hours of analysis that the cache is merely a
+    # byproduct of.
+    options:
+      backup:
+        exclude:
+          - /opt/dockerdata/djcc/data/pcm
     hooks:
       before:
         - echo "Generating list of containers to stop..."

@@ -34,6 +34,7 @@ public ones on `*.example.com` via a Cloudflare Tunnel.
 | **utilities** | Karakeep | `karakeep.dev.example.com` | Bookmark manager (+ Meilisearch, Chrome) |
 | | ip-tracker | `iptracker.dev.example.com` | Public-IP change tracker |
 | **job-agent** | job-agent | `jobagent.dev.example.com` | Telegram job-application agent (+ read-only monitoring dashboard) |
+| **djcc** | djcc | `djcc.dev.example.com` | Live DJ booth over the `musik/dj` crate, heard at `/stream.mp3` (built from source) |
 | **cloudflared** | cloudflared | — | Cloudflare Tunnel — the only public ingress |
 | **annabel-rene** | Wedding site | `annabel-rene.example.com` | Public static site, served through the tunnel |
 | **birthday-bash** | birthday-bash | `jonas.example.com` | Static browser game (nginx), stateless, served through the tunnel |
