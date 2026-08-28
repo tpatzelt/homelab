@@ -44,13 +44,16 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      # Deliberately long. On a cold /data the container analyses the whole
-      # crate before it opens the port — roughly 14s per record, so ~25min for
-      # the current 108. The index is on the bind mount and survives restarts,
-      # so this window is only ever paid after a wipe; warming it up front with
+      # Deliberately long, and sized off the crate. On a cold /data the
+      # container analyses the whole crate before it opens the port — roughly
+      # 14s per record, so ~1h45m for the current 437. The index is on the bind
+      # mount and survives restarts, so this window is only ever paid after a
+      # wipe; warming it up front with
       #   docker compose -f compose/djcc/compose.yaml run --rm djcc-scan
-      # keeps a first deploy from sitting here.
-      start_period: 1800s
+      # keeps a first deploy from sitting here. Grow this if the crate grows:
+      # it was 1800s when the crate was 108 records, which would now expire
+      # mid-analysis and leave the booth parked as unhealthy.
+      start_period: 7200s
     networks:
       - caddy_network
 
