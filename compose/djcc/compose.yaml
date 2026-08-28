@@ -11,6 +11,13 @@ services:
     container_name: djcc
     user: "${PUID}:${PGID}"
     restart: unless-stopped
+    # Carries CLAUDE_CODE_OAUTH_TOKEN, which is what puts Claude behind the
+    # decks rather than djcc's rule parser. A subscription token and not an API
+    # key on purpose: it is scoped to Claude Code, cannot call the Messages API,
+    # and the image ships the `claude` CLI so djcc can drive a headless one with
+    # it. `docker logs djcc` opens with `djcc doctor`, which says which of the
+    # two it got — that line is the fastest way to tell a thinking booth from a
+    # playing one.
     env_file: ./.env
     environment:
       TZ: ${TZ}
