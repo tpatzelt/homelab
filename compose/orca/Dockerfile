@@ -7,7 +7,7 @@
 # ./orca.deb` resolves upstream's own declared dependency set. The .deb also
 # lands a plain ELF binary at /opt/Orca/orca-ide, so there is no AppRun
 # wrapper printing extraction chatter ahead of the ready JSON on stdout.
-FROM ubuntu:24.04
+FROM ubuntu:26.04
 
 ARG ORCA_VERSION=1.4.188
 ARG NODE_VERSION=24.19.0
