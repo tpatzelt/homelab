@@ -38,6 +38,16 @@ public ones on `*.example.com` via a Cloudflare Tunnel.
 | **cloudflared** | cloudflared | — | Cloudflare Tunnel — the only public ingress |
 | **annabel-rene** | Wedding site | `annabel-rene.example.com` | Public static site, served through the tunnel |
 | **birthday-bash** | birthday-bash | `jonas.example.com` | Static browser game (nginx), stateless, served through the tunnel |
+| _external_ | NIGHTSHIFT | `nightshift.dev.example.com` | Autonomous Claude Code runner — dashboard, charter queue (basic_auth) |
+
+The last row is not a stack in this repo. NIGHTSHIFT lives in its own repository,
+deployed from `~/nightshift` with its own Compose project; its `web` container joins
+`caddy_network` so Caddy can reach it, and `scripts/check.sh` carries it in the
+`EXTERNAL` allowlist of its Caddyfile-upstream check. Reaching that dashboard means
+queueing charters — each one arms agent containers that spend real Claude quota
+against the repositories under `~/coding` — so it carries `basic_auth`
+(`NIGHTSHIFT_AUTH_USER`/`NIGHTSHIFT_AUTH_HASH` in `secrets/.caddy.env`) on top of the
+LAN-only `*.dev` wildcard, and it must not be given a cloudflared ingress rule.
 
 ## Architecture
 
