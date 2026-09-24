@@ -177,6 +177,24 @@
 		}
 	}
 
+	# NIGHTSHIFT — the autonomous Claude Code runner's dashboard. Reaching it
+	# means queueing charters: each one arms agent containers that spend real
+	# Claude quota against Tim's repositories, and the same page pauses, stops
+	# and finishes runs. That is why it carries basic_auth even on the LAN-only
+	# *.dev wildcard, the way dozzle does. Regenerate the credential with:
+	#   docker exec caddy caddy hash-password --plaintext '<new-password>'
+	# and escape every $ in the hash as $$ in compose/caddy/.env.
+	#
+	# Do not add a cloudflared ingress rule for this host and do not move it to
+	# the public *.{$DOMAIN} block.
+	@nightshift host nightshift.dev.{$DOMAIN}
+	handle @nightshift {
+		basic_auth {
+			{$NIGHTSHIFT_AUTH_USER} {$NIGHTSHIFT_AUTH_HASH}
+		}
+		reverse_proxy nightshift-web:8080
+	}
+
 	# Catch-all
 	handle {
 		abort

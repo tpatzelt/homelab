@@ -166,6 +166,15 @@ for path in glob.glob(os.path.join(work, "stacks", "*", "config.json")):
         else:
             names |= aliases
 
+# Containers Caddy proxies that are deployed from their own repository rather
+# than from a stack here. They still have to join caddy_network, but no
+# compose.yaml in this repo describes them, so name-matching cannot see them.
+# Keep the comment next to each one: an entry with no owner is how a typo
+# survives this check.
+EXTERNAL = {
+    "nightshift-web":  "NIGHTSHIFT dashboard, deployed from ~/nightshift",
+}
+
 fail = False
 seen = set()
 for line in open("compose/caddy/Caddyfile"):
@@ -179,7 +188,9 @@ for line in open("compose/caddy/Caddyfile"):
         if host in seen:
             continue
         seen.add(host)
-        if host in proxied:
+        if host in EXTERNAL:
+            print(f"    ok: {host} (external — {EXTERNAL[host]})")
+        elif host in proxied:
             print(f"    FAIL: reverse_proxy -> {host}: container runs with "
                   f"network_mode: {proxied[host]} and is not reachable by its own "
                   f"name — route via the container it borrows the netns from")
