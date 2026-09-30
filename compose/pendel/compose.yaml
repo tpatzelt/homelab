@@ -1,0 +1,42 @@
+# Mein Pendel: BVG/S-Bahn disruption alerts (app: github.com/tpatzelt/mein-pendel).
+# One image, three processes: the web app (the only one Caddy reaches), the
+# scheduler that checks saved commutes, and the Telegram /start poller.
+services:
+  pendel-web:
+    image: ghcr.io/tpatzelt/mein-pendel:latest
+    container_name: pendel-web
+    restart: unless-stopped
+    env_file: ./.env
+    volumes:
+      - /opt/dockerdata/pendel:/data
+    networks:
+      - caddy_network
+
+  pendel-scheduler:
+    image: ghcr.io/tpatzelt/mein-pendel:latest
+    container_name: pendel-scheduler
+    restart: unless-stopped
+    command: ["/app/.venv/bin/python", "-m", "pendel.runner"]
+    env_file: ./.env
+    volumes:
+      - /opt/dockerdata/pendel:/data
+    # No HTTP here, so the image's /healthz HEALTHCHECK does not apply.
+    healthcheck:
+      disable: true
+
+  pendel-telegram:
+    image: ghcr.io/tpatzelt/mein-pendel:latest
+    container_name: pendel-telegram
+    # Exits 0 when PENDEL_TELEGRAM_BOT_TOKEN is unset; unless-stopped would loop it.
+    restart: on-failure
+    command: ["/app/.venv/bin/python", "-m", "pendel.telegram_poll"]
+    env_file: ./.env
+    volumes:
+      - /opt/dockerdata/pendel:/data
+    healthcheck:
+      disable: true
+
+networks:
+  caddy_network:
+    external: true
+    name: caddy_network

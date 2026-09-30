@@ -233,6 +233,11 @@
 		reverse_proxy birthday-bash:80
 	}
 
+	@pendel host pendel.{$DOMAIN}
+	handle @pendel {
+		reverse_proxy pendel-web:8000
+	}
+
 	# Catch-all: Drop unhandled subdomains
 	handle {
 		abort
