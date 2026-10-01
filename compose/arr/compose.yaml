@@ -169,6 +169,55 @@ services:
       gluetun:
         condition: service_healthy
 
+  # Exportarr: one per app (lidarr is left out: its API 500s on /artist and
+  # /history over a corrupt quality profile in its DB, so it would only ever
+  # export collector errors), turning each *arr's API into Prometheus metrics
+  # (library size, missing/wanted, queue, health issues) for the Media
+  # dashboard. They read the API key straight out of the app's config.xml
+  # (mounted read-only), so no key is copied into an env file. Unlike the apps
+  # themselves they are NOT in gluetun's netns: they only talk to gluetun:<port>
+  # over caddy_network, never to the internet, so the anti-leak depends_on rule
+  # above does not apply.
+  sonarr-exporter:
+    <<: &exportarr
+      image: ghcr.io/onedr0p/exportarr:v2.3.0
+      restart: unless-stopped
+      networks:
+        - caddy_network
+    container_name: sonarr-exporter
+    command: ["sonarr"]
+    environment:
+      PORT: 9707
+      URL: http://gluetun:8989
+      CONFIG: /app/config/config.xml
+      ENABLE_ADDITIONAL_METRICS: "true"
+    volumes:
+      - /opt/dockerdata/sonarr:/app/config:ro
+
+  radarr-exporter:
+    <<: *exportarr
+    container_name: radarr-exporter
+    command: ["radarr"]
+    environment:
+      PORT: 9708
+      URL: http://gluetun:7878
+      CONFIG: /app/config/config.xml
+      ENABLE_ADDITIONAL_METRICS: "true"
+    volumes:
+      - /opt/dockerdata/radarr:/app/config:ro
+
+
+  prowlarr-exporter:
+    <<: *exportarr
+    container_name: prowlarr-exporter
+    command: ["prowlarr"]
+    environment:
+      PORT: 9710
+      URL: http://gluetun:9696
+      CONFIG: /app/config/config.xml
+    volumes:
+      - /opt/dockerdata/prowlarr:/app/config:ro
+
 networks:
   gluetun_network:
     name: gluetun_network

@@ -9,6 +9,9 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       # - ND_LOGLEVEL=debug
+      # /metrics for Prometheus (library size, scans, HTTP). navidrome is
+      # only routed on *.dev, so the endpoint is LAN-only like the UI.
+      - ND_PROMETHEUS_ENABLED=true
     volumes:
       - "/opt/dockerdata/navidrome/data:/data"
       - "/mnt/storage/data/Media/musik/:/music/storage:ro"
