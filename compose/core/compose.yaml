@@ -46,6 +46,27 @@ services:
     networks:
       - caddy_network
 
+  pihole-exporter:
+    # DNS stats (queries, blocked share, top clients/domains) for Grafana.
+    # Lives in this stack rather than monitoring so it can interpolate the
+    # Pi-hole password from core's .env instead of keeping a second copy.
+    container_name: pihole-exporter
+    image: ekofr/pihole-exporter:v1.2.0
+    restart: unless-stopped
+    environment:
+      # Pi-hole's web/API listens only on 443 with its own self-signed cert
+      # (the blackbox probe uses http_2xx_insecure for the same reason).
+      PIHOLE_PROTOCOL: https
+      PIHOLE_HOSTNAME: pihole
+      PIHOLE_PORT: 443
+      SKIP_TLS_VERIFICATION: "true"
+      PIHOLE_PASSWORD: '${PIHOLE_FTLCONF_webserver_api_password}'
+      PORT: 9617
+    depends_on:
+      - pihole
+    networks:
+      - caddy_network
+
   heimdall:
     container_name: heimdall
     image: lscr.io/linuxserver/heimdall:2.8.3

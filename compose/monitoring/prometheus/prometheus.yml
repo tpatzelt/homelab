@@ -29,6 +29,32 @@ scrape_configs:
     static_configs:
       - targets: ["cloudflared:2000"]
 
+  # App-level stats for the Media & Apps dashboard. The exportarr and
+  # pihole-exporter containers live in the arr / core stacks (they need those
+  # stacks' config and secrets); navidrome serves its own /metrics.
+  - job_name: arr
+    static_configs:
+      - targets: ["sonarr-exporter:9707", "radarr-exporter:9708", "prowlarr-exporter:9710"]
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "([^-]+)-exporter:.*"
+        target_label: instance
+    # exportarr walks the whole library over the API on every scrape
+    scrape_interval: 2m
+    scrape_timeout: 60s
+
+  - job_name: pihole
+    static_configs:
+      - targets: ["pihole-exporter:9617"]
+        labels:
+          instance: pihole
+
+  - job_name: navidrome
+    static_configs:
+      - targets: ["navidrome:4533"]
+        labels:
+          instance: navidrome
+
   # One probe per service, against the same upstream Caddy proxies to (the
   # *arr apps sit behind gluetun's netns, so they are probed as gluetun:<port>).
   # Targets are written "service=url"; `service` is what the dashboards show,
