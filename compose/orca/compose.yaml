@@ -79,7 +79,7 @@ services:
       - caddy_network
 
   orca-dind:
-    image: docker:29.7.2-dind
+    image: docker:29.8.2-dind
     container_name: orca-dind
     restart: unless-stopped
     # An isolated Docker daemon needs its own namespaces, cgroup writes and
