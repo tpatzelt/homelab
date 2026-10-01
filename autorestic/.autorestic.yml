@@ -39,11 +39,16 @@ locations:
     # up under /mnt/storage/data. The analysis index next to it
     # (/opt/dockerdata/djcc/data/library.json) is NOT excluded — it is small and
     # holds the hours of analysis that the cache is merely a byproduct of.
+    #
+    # Prometheus's TSDB is likewise excluded: it is 30 days of metrics history
+    # that rewrites its blocks continuously, so it would add churn to every
+    # snapshot to restore nothing a monitoring stack can't rebuild by scraping.
     options:
       backup:
         exclude:
           - /opt/dockerdata/orca/dind
           - /opt/dockerdata/djcc/data/pcm
+          - /opt/dockerdata/prometheus
     hooks:
       before:
         - echo "Generating list of containers to stop..."

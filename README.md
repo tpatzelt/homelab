@@ -20,6 +20,8 @@ public ones on `*.example.com` via a Cloudflare Tunnel.
 | | Dozzle | `dozzle.dev.example.com` | Real-time Docker log viewer |
 | | Heimdall | `heimdall.dev.example.com` | Application dashboard |
 | | Beszel (+agent) | `beszel.dev.example.com` | Server monitoring |
+| **monitoring** | Grafana | `grafana.dev.example.com` | Dashboards: service uptime, containers, host, traffic |
+| | Prometheus (+ cAdvisor, node-exporter, blackbox-exporter) | — | Metrics + per-service HTTP probes feeding Grafana |
 | **arr** | Gluetun | — | VPN gateway (AirVPN, WireGuard) |
 | | qBittorrent | `qbittorrent.dev.example.com` | Torrent client (via VPN) |
 | | Sonarr / Radarr / Lidarr | `sonarr.` / `radarr.` / `lidarr.dev.example.com` | TV / movie / music management (via VPN) |
@@ -103,7 +105,7 @@ the tracked template to copy from.
 
 2. **Symlink them into the stacks** (repeat per stack; cloudflared needs none):
    ```bash
-   for d in annabel-rene arr birthday-bash caddy core filebrowser immich jellyfin job-agent pendel seerr utilities vaultwarden; do
+   for d in annabel-rene arr birthday-bash caddy core filebrowser immich jellyfin job-agent monitoring pendel seerr utilities vaultwarden; do
      ln -s "../../secrets/.$d.env" "compose/$d/.env"
    done
    ln -s ../../secrets/.navidrom.env compose/navidrome/.env   # filename typo is intentional
@@ -120,7 +122,7 @@ the tracked template to copy from.
    ```bash
    docker compose -f compose/caddy/compose.yaml up -d
    docker compose -f compose/core/compose.yaml up -d
-   for s in arr cloudflared immich jellyfin job-agent navidrome filebrowser seerr vaultwarden utilities annabel-rene birthday-bash pendel; do
+   for s in arr cloudflared immich jellyfin job-agent monitoring navidrome filebrowser seerr vaultwarden utilities annabel-rene birthday-bash pendel; do
      docker compose -f compose/$s/compose.yaml up -d
    done
    ```
@@ -159,6 +161,26 @@ against the running container before recreating. Every image is pinned;
 `renovate.json5`'s ignore list is the source of truth for the intentionally
 unpinned ones (the owner's personal `ghcr.io/tpatzelt/*` images, deployed by
 their own pipelines).
+
+## Monitoring
+
+`compose/monitoring` runs Prometheus + Grafana at `grafana.dev.example.com`
+(login: `GF_SECURITY_ADMIN_*` in `secrets/.monitoring.env`, read on first start
+only). Four provisioned dashboards, in the **Homelab** folder:
+
+- **Homelab Overview** (home page) — UP/DOWN tile per service, availability
+  history, uptime % over the selected range, top containers, host gauges.
+- **Containers** — CPU / memory / network / disk I/O / OOM kills per
+  container (cAdvisor), filterable by stack.
+- **Host** — CPU, memory, disks, NIC, temperatures (node-exporter).
+- **Traffic & Security** — Caddy requests / status codes / p95 latency per
+  site, CrowdSec bans, Cloudflare tunnel health.
+
+"Up" comes from blackbox-exporter probing each service at the same upstream
+Caddy proxies to (list in `compose/monitoring/prometheus/prometheus.yml` —
+add a line there when adding a Caddy route). Dashboards are files in
+`compose/monitoring/grafana/dashboards/`; Grafana refuses UI saves to them,
+so edit the JSON (or save a copy in the UI and export it back).
 
 ## Backups
 

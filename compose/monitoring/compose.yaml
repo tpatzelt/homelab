@@ -1,0 +1,146 @@
+# Metrics + dashboards for every other stack: Prometheus scrapes, Grafana
+# draws. What feeds it:
+#   - blackbox-exporter probes each service's upstream over caddy_network
+#     (the same address Caddy proxies to), so "up" means "Caddy can reach it"
+#   - cadvisor: per-container CPU / memory / network / restarts
+#   - node-exporter: the host itself (CPU, RAM, disks, NIC)
+#   - caddy (:2020) and crowdsec (:6060) / cloudflared (:2000) expose their own
+#     /metrics on caddy_network
+# Config lives in this directory and is bind-mounted as *directories*, never
+# single files — see the inode trap in CLAUDE.md.
+services:
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    container_name: prometheus
+    restart: unless-stopped
+    # /opt/dockerdata is group-writable by tim; the image's default `nobody`
+    # user cannot write a directory created there.
+    user: "${PUID}:${PGID}"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --storage.tsdb.retention.size=5GB
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - /opt/dockerdata/prometheus:/prometheus
+    extra_hosts:
+      # node-exporter runs on the host network, bound to docker0 only
+      - host.docker.internal:host-gateway
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - caddy_network
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:13.2.3
+    container_name: grafana
+    restart: unless-stopped
+    user: "${PUID}:${PGID}"
+    env_file: ./.env
+    environment:
+      GF_SERVER_ROOT_URL: https://grafana.dev.${DOMAIN}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/homelab-overview.json
+    volumes:
+      - /opt/dockerdata/grafana:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      # Dashboards are provisioned from the repo; edits made in the UI are
+      # rejected on save — change the JSON here instead.
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    networks:
+      - caddy_network
+      - monitoring
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.28.0
+    container_name: blackbox-exporter
+    restart: unless-stopped
+    command: ["--config.file=/etc/blackbox/blackbox.yml"]
+    volumes:
+      - ./blackbox:/etc/blackbox:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9115/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # Needs caddy_network to reach the services it probes
+    networks:
+      - caddy_network
+      - monitoring
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.60.6
+    container_name: cadvisor
+    restart: unless-stopped
+    # The defaults collect per-CPU, per-filesystem (a du per container) and
+    # more — real load on a 2-core Celeron. Keep only what the dashboards use.
+    command:
+      - --housekeeping_interval=30s
+      - --docker_only=true
+      - --store_container_labels=false
+      - --whitelisted_container_labels=com.docker.compose.project,com.docker.compose.service
+      - --disable_metrics=percpu,sched,tcp,udp,disk,hugetlb,referenced_memory,cpu_topology,resctrl,cpuset,advtcp,memory_numa,process
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    devices:
+      - /dev/kmsg
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - monitoring
+
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    container_name: node-exporter
+    restart: unless-stopped
+    # Host network + host pid so NIC and process counters are the host's, not
+    # a container namespace's. Bound to docker0 only, so the LAN cannot
+    # scrape it; Prometheus reaches it as host.docker.internal.
+    network_mode: host
+    pid: host
+    command:
+      - --path.rootfs=/host
+      - --web.listen-address=172.17.0.1:9100
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|run|sys|var/lib/docker/.+|var/snap/.+)($|/)
+    volumes:
+      - /:/host:ro,rslave
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://172.17.0.1:9100/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  caddy_network:
+    external: true
+    name: caddy_network
+  monitoring:
+    name: monitoring
