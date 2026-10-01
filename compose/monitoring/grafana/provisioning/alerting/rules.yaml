@@ -1,0 +1,131 @@
+# Grafana-managed alert rules over the Prometheus datasource. Notification
+# routing is in policies.yaml. Templates use `index .Labels` rather than the
+# dollar-labels shorthand, because provisioning files expand env variables.
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: homelab
+    folder: Homelab
+    interval: 1m
+    rules:
+      - uid: service-down
+        title: Service down
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 'Service {{ index .Labels "service" }} ({{ index .Labels "stack" }} stack) has failed its health probe for 5 minutes.'
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              expr: 'probe_success{job="blackbox"}'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: lt, params: [1]}
+      - uid: scrape-target-down
+        title: Metrics target down
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 'Prometheus cannot scrape {{ index .Labels "job" }} ({{ index .Labels "instance" }}).'
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              expr: 'up{job!="blackbox"}'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: lt, params: [1]}
+      - uid: disk-almost-full
+        title: Disk almost full
+        condition: C
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 'Filesystem {{ index .Labels "mountpoint" }} is {{ printf "%.0f" (index .Values "A") }}% full.'
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              expr: '100 * (1 - node_filesystem_avail_bytes{fstype=~"ext4|xfs|btrfs|vfat"} / node_filesystem_size_bytes{fstype=~"ext4|xfs|btrfs|vfat"})'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: gt, params: [90]}
+      - uid: memory-low
+        title: Host memory low
+        condition: C
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 'Only {{ printf "%.0f" (index .Values "A") }}% of host memory is available.'
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              expr: '100 * node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: lt, params: [10]}
+      - uid: cpu-saturated
+        title: Host CPU saturated
+        condition: C
+        for: 30m
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 'Host CPU has been above 90% for 30 minutes (now {{ printf "%.0f" (index .Values "A") }}%).'
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              expr: '100 * (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])))'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: gt, params: [90]}

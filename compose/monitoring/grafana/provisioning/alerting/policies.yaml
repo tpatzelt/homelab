@@ -1,0 +1,27 @@
+apiVersion: 1
+
+# The weekly backup (Thu 03:00 UTC) stops every container except pihole for
+# ~25 minutes; muting that window keeps it from paging as a mass outage.
+muteTimes:
+  - orgId: 1
+    name: weekly-backup
+    time_intervals:
+      - weekdays: [thursday]
+        times:
+          - start_time: "02:55"
+            end_time: "04:30"
+        location: UTC
+
+policies:
+  - orgId: 1
+    receiver: email
+    group_by: [grafana_folder, alertname]
+    group_wait: 1m
+    group_interval: 5m
+    repeat_interval: 12h
+    # Grafana refuses mute timings on the root route, so a catch-all child
+    # carries it (an empty matcher list matches every alert).
+    routes:
+      - receiver: email
+        object_matchers: []
+        mute_time_intervals: [weekly-backup]

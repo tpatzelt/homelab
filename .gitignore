@@ -1,3 +1,5 @@
 *.env
 !*.env.example
 .autorestic.lock.yml
+# timestamped copies of secret env files (e.g. .monitoring.env.bak-20261001102901)
+*.env.bak-*
