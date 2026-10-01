@@ -10,6 +10,20 @@
 	servers {
 		trusted_proxies static private_ranges
 	}
+
+	# Prometheus metrics, labelled per host so the monitoring stack's
+	# dashboards can break traffic down by service. Scraped from :2020 below.
+	metrics {
+		per_host
+	}
+}
+
+# Metrics listener for Prometheus (compose/monitoring). Plain HTTP on a port
+# that is not published to the host, so only containers on caddy_network can
+# reach it. Deliberately not the admin API (:2019): that one can rewrite
+# Caddy's config and stays bound to localhost.
+http://:2020 {
+	metrics /metrics
 }
 
 *.dev.{$DOMAIN} {
@@ -175,6 +189,12 @@
 		reverse_proxy djcc:8765 {
 			flush_interval -1
 		}
+	}
+
+	# Grafana has its own login (admin credential in secrets/.monitoring.env).
+	@grafana host grafana.dev.{$DOMAIN}
+	handle @grafana {
+		reverse_proxy grafana:3000
 	}
 
 	# NIGHTSHIFT — the autonomous Claude Code runner's dashboard. Reaching it
