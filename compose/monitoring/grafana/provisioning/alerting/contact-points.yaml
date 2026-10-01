@@ -1,0 +1,13 @@
+# Alert e-mail goes out via the SMTP server set by GF_SMTP_* in .env;
+# the recipient is ALERT_EMAIL there too, so no address lands in the repo.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: email
+    receivers:
+      - uid: email-owner
+        type: email
+        settings:
+          addresses: ${ALERT_EMAIL}
+          singleEmail: true
