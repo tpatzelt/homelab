@@ -21,6 +21,19 @@ services:
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=30d
       - --storage.tsdb.retention.size=5GB
+      # Push intake for Claude Code's OpenTelemetry metrics (Claude Code
+      # Usage dashboard). Claude Code must export *cumulative* temporality:
+      # this receiver rejects delta, which is Claude Code's default.
+      # created-timestamp-zero-ingestion writes a 0 at each session's start so
+      # a one-push session still registers; extended range selectors give the
+      # dashboard `increase(...[r] anchored)`, which does not extrapolate (plain
+      # increase() inflates such short series by up to 50%).
+      - --web.enable-otlp-receiver
+      - --enable-feature=created-timestamp-zero-ingestion,promql-extended-range-selectors
+    # Loopback only: the Claude Code CLI on the host pushes to
+    # http://127.0.0.1:9090/api/v1/otlp/v1/metrics. Not LAN-reachable.
+    ports:
+      - 127.0.0.1:9090:9090
     volumes:
       - ./prometheus:/etc/prometheus:ro
       - /opt/dockerdata/prometheus:/prometheus
