@@ -268,6 +268,14 @@ all when the tunnel is absent.
       copytruncate
   }
   ```
+- The pihole-exporter watchdog also lives in tim's crontab and calls
+  `scripts/pihole-exporter-watchdog.sh` every 2 minutes. It restarts the
+  exporter when Prometheus has had no successful scrape of it for 3 minutes
+  while Pi-hole is healthy (v1.2.0 can wedge until restart; see the script
+  header). It prints only when it acts, so its log needs no rotation:
+  ```cron
+  */2 * * * * /home/tim/coding/homelab/scripts/pihole-exporter-watchdog.sh >> /home/tim/logs/pihole-exporter-watchdog.log 2>&1
+  ```
 
 ### Mounts
 - `/mnt/storage` is mounted at boot via `/etc/fstab` (UUID entry with
