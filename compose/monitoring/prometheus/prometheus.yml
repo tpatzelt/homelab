@@ -102,6 +102,7 @@ scrape_configs:
           - annabel-rene=http://annabel-rene-frontend:4321
           - birthday-bash=http://birthday-bash:80
           - pendel=http://pendel-web:8000/healthz
+          - bikes=http://bikes:8080/healthz
       - labels: {stack: infra}
         targets:
           - caddy=http://caddy:2020/metrics

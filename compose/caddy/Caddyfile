@@ -258,6 +258,11 @@ http://:2020 {
 		reverse_proxy pendel-web:8000
 	}
 
+	@bikes host bikes.{$DOMAIN}
+	handle @bikes {
+		reverse_proxy bikes:8080
+	}
+
 	# Catch-all: Drop unhandled subdomains
 	handle {
 		abort

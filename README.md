@@ -41,6 +41,7 @@ public ones on `*.example.com` via a Cloudflare Tunnel.
 | **annabel-rene** | Wedding site | `annabel-rene.example.com` | Public static site, served through the tunnel |
 | **birthday-bash** | birthday-bash | `jonas.example.com` | Static browser game (nginx), stateless, served through the tunnel |
 | **pendel** | pendel-web, pendel-scheduler, pendel-telegram | `pendel.example.com` | BVG/S-Bahn commute disruption alerts via Telegram/ntfy ([app repo](https://github.com/tpatzelt/mein-pendel)), served through the tunnel |
+| **bikes** | bikes | `bikes.example.com` | "Wie Berlin radelt": nextbike availability collector + nightly-rebuilt public site ([app repo](https://github.com/tpatzelt/berlin-bike-data)), served through the tunnel |
 | _external_ | NIGHTSHIFT | `nightshift.dev.example.com` | Autonomous Claude Code runner — dashboard, charter queue (basic_auth) |
 
 The last row is not a stack in this repo. NIGHTSHIFT lives in its own repository,
@@ -105,7 +106,7 @@ the tracked template to copy from.
 
 2. **Symlink them into the stacks** (repeat per stack; cloudflared needs none):
    ```bash
-   for d in annabel-rene arr birthday-bash caddy core filebrowser immich jellyfin job-agent monitoring pendel seerr utilities vaultwarden; do
+   for d in annabel-rene arr birthday-bash caddy core filebrowser immich jellyfin job-agent monitoring pendel bikes seerr utilities vaultwarden; do
      ln -s "../../secrets/.$d.env" "compose/$d/.env"
    done
    ln -s ../../secrets/.navidrom.env compose/navidrome/.env   # filename typo is intentional
@@ -122,7 +123,7 @@ the tracked template to copy from.
    ```bash
    docker compose -f compose/caddy/compose.yaml up -d
    docker compose -f compose/core/compose.yaml up -d
-   for s in arr cloudflared immich jellyfin job-agent monitoring navidrome filebrowser seerr vaultwarden utilities annabel-rene birthday-bash pendel; do
+   for s in arr cloudflared immich jellyfin job-agent monitoring navidrome filebrowser seerr vaultwarden utilities annabel-rene birthday-bash pendel bikes; do
      docker compose -f compose/$s/compose.yaml up -d
    done
    ```
