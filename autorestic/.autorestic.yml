@@ -32,14 +32,6 @@ locations:
     # daemon's own config and the orca home directory beside it are NOT
     # excluded; those hold the state worth keeping.
     #
-    # djcc's PCM cache is the same kind of data: every record in the crate is
-    # decoded once to raw float32 and memory-mapped so deck loads never wait on
-    # a decoder. That is ~150 MB per record (~16 GB for the current crate) and
-    # `djcc scan` rebuilds all of it from the MP3s, which are themselves backed
-    # up under /mnt/storage/data. The analysis index next to it
-    # (/opt/dockerdata/djcc/data/library.json) is NOT excluded — it is small and
-    # holds the hours of analysis that the cache is merely a byproduct of.
-    #
     # Prometheus's TSDB is likewise excluded: it is 30 days of metrics history
     # that rewrites its blocks continuously, so it would add churn to every
     # snapshot to restore nothing a monitoring stack can't rebuild by scraping.
@@ -47,7 +39,6 @@ locations:
       backup:
         exclude:
           - /opt/dockerdata/orca/dind
-          - /opt/dockerdata/djcc/data/pcm
           - /opt/dockerdata/prometheus
     hooks:
       before:

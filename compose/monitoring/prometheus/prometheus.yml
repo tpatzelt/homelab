@@ -87,7 +87,6 @@ scrape_configs:
           - immich=http://immich-server:2283/api/server/ping
           - navidrome=http://navidrome:4533/ping
           - seerr=http://seerr:5055/api/v1/status
-          - djcc=http://djcc:8765/api/state
       - labels: {stack: utilities}
         targets:
           - vaultwarden=http://vaultwarden:80/alive

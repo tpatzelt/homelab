@@ -25,8 +25,11 @@ services:
         condition: service_healthy
     healthcheck:
       # Probes the admin API (localhost-only, port 2019); 127.0.0.1 because
-      # busybox wget prefers ::1 and the admin endpoint is IPv4-only
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]
+      # busybox wget prefers ::1 and the admin endpoint is IPv4-only.
+      # /config/admin (a 5-byte `null`), not /config/: --spider hangs up after
+      # the headers, and with the whole config as the body ~15% of checks
+      # logged a broken-pipe 500 in admin.api.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/admin"]
       interval: 30s
       timeout: 5s
       retries: 3
