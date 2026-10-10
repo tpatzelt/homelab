@@ -101,7 +101,9 @@ services:
         condition: service_healthy
 
   lidarr:
-    image: lscr.io/linuxserver/lidarr:8.1.2135
+    # Was `8.1.2135` until 2026-10 — a 2021 build (0.8.1.2135) whose tag
+    # Renovate read as v8.1, above every real 2.x/3.x, so no PR ever came.
+    image: lscr.io/linuxserver/lidarr:3.1.0
     container_name: lidarr
     env_file: ./.env
     environment:
@@ -169,9 +171,9 @@ services:
       gluetun:
         condition: service_healthy
 
-  # Exportarr: one per app (lidarr is left out: its API 500s on /artist and
-  # /history over a corrupt quality profile in its DB, so it would only ever
-  # export collector errors), turning each *arr's API into Prometheus metrics
+  # Exportarr: one per app except lidarr (left out while it ran a 2021 build
+  # whose API 500'd; since the 3.x upgrade its API answers, so it could get
+  # one), turning each *arr's API into Prometheus metrics
   # (library size, missing/wanted, queue, health issues) for the Media
   # dashboard. They read the API key straight out of the app's config.xml
   # (mounted read-only), so no key is copied into an env file. Unlike the apps
@@ -190,6 +192,7 @@ services:
       PORT: 9707
       URL: http://gluetun:8989
       CONFIG: /app/config/config.xml
+      LOG_LEVEL: warn
       ENABLE_ADDITIONAL_METRICS: "true"
     volumes:
       - /opt/dockerdata/sonarr:/app/config:ro
@@ -202,6 +205,7 @@ services:
       PORT: 9708
       URL: http://gluetun:7878
       CONFIG: /app/config/config.xml
+      LOG_LEVEL: warn
       ENABLE_ADDITIONAL_METRICS: "true"
     volumes:
       - /opt/dockerdata/radarr:/app/config:ro
@@ -215,6 +219,7 @@ services:
       PORT: 9710
       URL: http://gluetun:9696
       CONFIG: /app/config/config.xml
+      LOG_LEVEL: warn
     volumes:
       - /opt/dockerdata/prowlarr:/app/config:ro
 

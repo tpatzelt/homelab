@@ -604,7 +604,7 @@
       "id": 9,
       "type": "timeseries",
       "title": "p95 latency per site",
-      "description": "Long-lived streams (djcc /stream.mp3, websockets) inflate this \u2014 they count when they close.",
+      "description": "Long-lived streams (websockets) inflate this \u2014 they count when they close.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
