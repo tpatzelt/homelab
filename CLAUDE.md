@@ -163,17 +163,16 @@ Docker's default log driver is capped in `/etc/docker/daemon.json` (`max-size 10
 `max-file 3`) — this applies at container *create* time, so a bare `docker restart` will
 not pick it up; a `restart-services.sh` pass will. `journald` is capped at 500M.
 A `docker-prune.timer` runs monthly; it deliberately uses `docker system prune -f`
-**without** `-a` (see the alpine-chrome note below).
+**without** `-a` (see the note on unpullable images below).
 
 ### Images that can no longer be pulled
 
-`gcr.io/zenika-hub/alpine-chrome:124` (karakeep's browser sidecar) **404/403s on pull** —
-the upstream GCR project has billing disabled, so the tag is gone for good. The container
-runs from a locally cached image that cannot be replaced if it is ever collected. This is
-why the monthly prune omits `-a` and why `restart-services.sh` aborts on the `utilities`
-stack (its `set -e` correctly stops before the `down`, so nothing breaks — but that stack
-must then be deployed per-service, skipping karakeep-chrome). The real fix is to move
-karakeep onto a maintained Chrome/Chromium image.
+`gcr.io/zenika-hub/alpine-chrome:124`, karakeep's old browser sidecar, **404/403s on pull**,
+because the upstream GCR project has billing disabled. On 2026-10-31 it was replaced with
+upstream's maintained `ghcr.io/karakeep-app/karakeep-chrome`. The old image had become a
+security problem as well as an unpullable one: it ran a 2024 Chromium with `--no-sandbox`
+against arbitrary bookmarked pages. Nothing in the repo uses the old image any more. The
+monthly prune still omits `-a` so that any future unpullable image stays protected.
 
 ## Conventions (from prior project instructions)
 - Service names: lowercase with hyphens (`immich-server`, not `immich_server`).
