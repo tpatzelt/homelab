@@ -18,7 +18,7 @@ services:
 
   karakeep:
     container_name: karakeep
-    image: ghcr.io/karakeep-app/karakeep:0.33.2
+    image: ghcr.io/karakeep-app/karakeep:0.34.1
     restart: unless-stopped
     volumes:
       - /opt/dockerdata/karakeep/data:/data
@@ -34,15 +34,19 @@ services:
 
   karakeep-chrome:
     container_name: karakeep-chrome
-    image: gcr.io/zenika-hub/alpine-chrome:124
+    # Upstream's maintained browser image. It replaced gcr.io/zenika-hub/alpine-chrome:124,
+    # which stopped being pullable and shipped a 2024 Chromium. Its entrypoint
+    # already sets the headless/DevTools flags and forwards 9222 to them with
+    # socat, so only the extra flags from upstream's compose file go here.
+    image: ghcr.io/karakeep-app/karakeep-chrome:156.0.8078.47-r1
     restart: unless-stopped
+    init: true
     command:
-      - --no-sandbox
       - --disable-gpu
       - --disable-dev-shm-usage
-      - --remote-debugging-address=0.0.0.0
-      - --remote-debugging-port=9222
       - --hide-scrollbars
+      - --disable-blink-features=AutomationControlled
+      - --window-size=1440,900
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9222/json/version"]
       interval: 30s
