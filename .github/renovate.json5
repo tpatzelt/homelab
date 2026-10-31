@@ -43,6 +43,15 @@
       groupName: "linuxserver",
     },
     {
+      // LinuxServer's Jellyfin tags changed format at 12.0, from `10.11.11`
+      // to `12.4ubu2604-ls57` (app version, Ubuntu base, LS build). Default
+      // docker versioning can't order those, so 10.11.11 never got a PR for
+      // 12.x. This regex keeps the Ubuntu base as a compatibility constraint
+      // and treats the LS build number as the patch level.
+      matchPackageNames: ["lscr.io/linuxserver/jellyfin"],
+      versioning: "regex:^(?<major>\\d+)\\.(?<minor>\\d+)ubu(?<compatibility>\\d+)-ls(?<patch>\\d+)$",
+    },
+    {
       // Major bumps are never auto-merged and are labeled so they stand out
       // for manual review.
       matchUpdateTypes: ["major"],
