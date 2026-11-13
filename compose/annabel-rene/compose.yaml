@@ -13,6 +13,8 @@ services:
       # more, so an empty FRIENDS_PASSWORD locks every friend out.
       FRIENDS_PASSWORD: ${ANNABEL_RENE_FRIENDS_PASSWORD}
       FRIENDS_PASSWORD_HINT: ${ANNABEL_RENE_FRIENDS_PASSWORD_HINT}
+      # CARTO basemap tile key; read per request, so rotating it needs only a restart.
+      CARTO_API_KEY: ${ANNABEL_RENE_CARTO_API_KEY}
       DATA_DIR: /data
     volumes:
       - /opt/dockerdata/annabel-rene/data:/data
