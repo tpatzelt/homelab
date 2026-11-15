@@ -247,6 +247,11 @@ http://:2020 {
 		reverse_proxy bikes:8080
 	}
 
+	@rezepte host rezepte.{$DOMAIN}
+	handle @rezepte {
+		reverse_proxy reel-recipes:8000
+	}
+
 	# Catch-all: Drop unhandled subdomains
 	handle {
 		abort
