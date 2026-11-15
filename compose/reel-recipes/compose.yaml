@@ -1,0 +1,18 @@
+# Reel Recipes: paste an Instagram reel link, get a step-by-step recipe with
+# stills from the video (app: github.com/tpatzelt/reel-recipes). One container:
+# the web app plus its in-process job worker (yt-dlp, ffmpeg, whisper on CPU).
+services:
+  reel-recipes:
+    image: ghcr.io/tpatzelt/reel-recipes:latest
+    container_name: reel-recipes
+    restart: unless-stopped
+    env_file: ./.env
+    volumes:
+      - /opt/dockerdata/reel-recipes:/data
+    networks:
+      - caddy_network
+
+networks:
+  caddy_network:
+    external: true
+    name: caddy_network
