@@ -91,7 +91,7 @@ services:
       - caddy_network
 
   beszel:
-    image: henrygd/beszel:0.20.0
+    image: henrygd/beszel:0.21.2
     container_name: beszel
     env_file: ./.env
     restart: unless-stopped
