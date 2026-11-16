@@ -38,7 +38,7 @@ services:
     # which stopped being pullable and shipped a 2024 Chromium. Its entrypoint
     # already sets the headless/DevTools flags and forwards 9222 to them with
     # socat, so only the extra flags from upstream's compose file go here.
-    image: ghcr.io/karakeep-app/karakeep-chrome:157.0.8103.38-r1
+    image: ghcr.io/karakeep-app/karakeep-chrome:157.0.8103.78-r1
     restart: unless-stopped
     init: true
     command:
