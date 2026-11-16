@@ -1,0 +1,17 @@
+services:
+  # Skips SponsorBlock segments and ads on YouTube TV apps (Chromecast, smart
+  # TVs, consoles) by pairing as a "Link with TV code" remote. Outbound-only:
+  # it talks to YouTube's lounge API and the SponsorBlock API, has no web UI
+  # and listens on nothing, so it gets no Caddy route, no caddy_network and no
+  # blackbox probe. Pairing lives in /app/data/config.json, written by the
+  # one-off setup run documented in CLAUDE.md, not by this service.
+  isponsorblocktv:
+    image: ghcr.io/dmunozv04/isponsorblocktv:v2.11.0
+    container_name: isponsorblocktv
+    # The image runs as root by default; config.json is the only thing it
+    # writes, so run it as the owner of /opt/dockerdata like everything else.
+    user: "${PUID}:${PGID}"
+    restart: unless-stopped
+    env_file: ./.env
+    volumes:
+      - "/opt/dockerdata/isponsorblocktv:/app/data"

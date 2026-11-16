@@ -35,6 +35,7 @@ public ones on `*.example.com` via a Cloudflare Tunnel.
 | **utilities** | Karakeep | `karakeep.dev.example.com` | Bookmark manager (+ Meilisearch, Chrome) |
 | | ip-tracker | `iptracker.dev.example.com` | Public-IP change tracker |
 | **job-agent** | job-agent | `jobagent.dev.example.com` | Telegram job-application agent (+ read-only monitoring dashboard) |
+| **isponsorblocktv** | iSponsorBlockTV | — | Skips SponsorBlock segments + ads on YouTube TV apps (outbound-only, no UI) |
 | **orca** | Orca ADE | `orca.dev.example.com` | Agent development environment, headless `orca serve` (+ docker-in-docker sidecar) |
 | **cloudflared** | cloudflared | — | Cloudflare Tunnel — the only public ingress |
 | **annabel-rene** | Wedding site | `annabel-rene.example.com` | Public static site, served through the tunnel |
@@ -106,7 +107,7 @@ the tracked template to copy from.
 
 2. **Symlink them into the stacks** (repeat per stack; cloudflared needs none):
    ```bash
-   for d in annabel-rene arr birthday-bash caddy core filebrowser immich jellyfin job-agent monitoring pendel bikes reel-recipes seerr utilities vaultwarden; do
+   for d in annabel-rene arr birthday-bash caddy core filebrowser immich isponsorblocktv jellyfin job-agent monitoring pendel bikes reel-recipes seerr utilities vaultwarden; do
      ln -s "../../secrets/.$d.env" "compose/$d/.env"
    done
    ln -s ../../secrets/.navidrom.env compose/navidrome/.env   # filename typo is intentional
@@ -123,7 +124,7 @@ the tracked template to copy from.
    ```bash
    docker compose -f compose/caddy/compose.yaml up -d
    docker compose -f compose/core/compose.yaml up -d
-   for s in arr cloudflared immich jellyfin job-agent monitoring navidrome filebrowser seerr vaultwarden utilities annabel-rene birthday-bash pendel bikes reel-recipes; do
+   for s in arr cloudflared immich isponsorblocktv jellyfin job-agent monitoring navidrome filebrowser seerr vaultwarden utilities annabel-rene birthday-bash pendel bikes reel-recipes; do
      docker compose -f compose/$s/compose.yaml up -d
    done
    ```
