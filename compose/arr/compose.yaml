@@ -78,7 +78,7 @@ services:
         condition: service_healthy
 
   radarr:
-    image: lscr.io/linuxserver/radarr:6.4.4
+    image: lscr.io/linuxserver/radarr:7.0.3
     container_name: radarr
     env_file: ./.env
     environment:
@@ -103,7 +103,7 @@ services:
   lidarr:
     # Was `8.1.2135` until 2026-10 — a 2021 build (0.8.1.2135) whose tag
     # Renovate read as v8.1, above every real 2.x/3.x, so no PR ever came.
-    image: lscr.io/linuxserver/lidarr:3.1.6
+    image: lscr.io/linuxserver/lidarr:8.1.2135
     container_name: lidarr
     env_file: ./.env
     environment:
@@ -150,7 +150,7 @@ services:
         condition: service_healthy
 
   prowlarr:
-    image: lscr.io/linuxserver/prowlarr:2.7.0
+    image: lscr.io/linuxserver/prowlarr:3.0.2
     container_name: prowlarr
     env_file: ./.env
     environment:
