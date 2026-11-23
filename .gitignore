@@ -3,3 +3,5 @@
 .autorestic.lock.yml
 # timestamped copies of secret env files (e.g. .monitoring.env.bak-20261001102901)
 *.env.bak-*
+# a parked stack (scripts/arr-stack.sh down); restart-services.sh skips it
+compose/*/.disabled

@@ -95,6 +95,12 @@ for stack in "${STACKS[@]}"; do
     echo "==> skipping ${stack} (no compose.yaml)"
     continue
   fi
+  # A gitignored compose/<stack>/.disabled marker parks a stack (see
+  # scripts/arr-stack.sh); bringing it up would hang on gluetun's healthcheck.
+  if [[ -f "compose/${stack}/.disabled" ]]; then
+    echo "==> skipping ${stack} (parked: compose/${stack}/.disabled)"
+    continue
+  fi
   echo "==> pulling ${stack}"
   docker compose -f "$compose_file" pull --ignore-buildable
   echo "==> restarting ${stack}"
