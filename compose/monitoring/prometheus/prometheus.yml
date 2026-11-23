@@ -25,9 +25,15 @@ scrape_configs:
     static_configs:
       - targets: ["crowdsec:6060"]
 
+  # cloudflared is on public_network, which Prometheus does not join, so its
+  # /metrics is scraped through Caddy's :2020 listener (see the Caddyfile).
+  # The instance label keeps the series the dashboards already have.
   - job_name: cloudflared
+    metrics_path: /cloudflared/metrics
     static_configs:
-      - targets: ["cloudflared:2000"]
+      - targets: ["caddy:2020"]
+        labels:
+          instance: cloudflared:2000
 
   # App-level stats for the Media & Apps dashboard. The exportarr and
   # pihole-exporter containers live in the arr / core stacks (they need those
@@ -67,9 +73,8 @@ scrape_configs:
     static_configs:
       - labels: {stack: core}
         targets:
-          - beszel=http://beszel:8090/api/health
           - dozzle=http://dozzle:8080/healthcheck
-          - heimdall=http://heimdall:80
+          - homepage=http://homepage:3000/api/healthcheck
       - labels: {stack: core, __param_module: http_2xx_insecure}
         targets:
           - pihole=https://pihole:443/admin/
@@ -94,7 +99,6 @@ scrape_configs:
           - karakeep=http://karakeep:3000/api/health
           - ip-tracker=http://ip-tracker:8000
           - job-agent=http://job-agent:8765
-          - orca=http://orca:6768/web-index.html
           - nightshift=http://nightshift-web:8080/api/health
       - labels: {stack: public}
         targets:
@@ -109,10 +113,6 @@ scrape_configs:
           - crowdsec=http://crowdsec:8080/health
           - cloudflared=http://cloudflared:2000/ready
           - grafana=http://grafana:3000/api/health
-      # goaccess's port speaks only WebSocket (plain HTTP gets a 400)
-      - labels: {stack: infra, __param_module: tcp_connect}
-        targets:
-          - goaccess=goaccess:7890
     relabel_configs:
       - source_labels: [__address__]
         regex: "([^=]+)=(.+)"

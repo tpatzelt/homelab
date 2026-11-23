@@ -1,11 +1,12 @@
 # Metrics + dashboards for every other stack: Prometheus scrapes, Grafana
 # draws. What feeds it:
-#   - blackbox-exporter probes each service's upstream over caddy_network
-#     (the same address Caddy proxies to), so "up" means "Caddy can reach it"
+#   - blackbox-exporter probes each service's upstream over caddy_network or
+#     public_network (the same address Caddy proxies to), so "up" means
+#     "Caddy can reach it"
 #   - cadvisor: per-container CPU / memory / network / restarts
 #   - node-exporter: the host itself (CPU, RAM, disks, NIC)
-#   - caddy (:2020) and crowdsec (:6060) / cloudflared (:2000) expose their own
-#     /metrics on caddy_network
+#   - caddy (:2020) and crowdsec (:6060) expose their own /metrics on
+#     caddy_network; cloudflared's (:2000) is relayed by caddy:2020
 # Config lives in this directory and is bind-mounted as *directories*, never
 # single files — see the inode trap in CLAUDE.md.
 services:
@@ -95,9 +96,12 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-    # Needs caddy_network to reach the services it probes
+    # Needs caddy_network to reach the internal services it probes, and
+    # public_network for the public sites and cloudflared. Apart from Caddy
+    # it is the only container on both.
     networks:
       - caddy_network
+      - public_network
       - monitoring
 
   cadvisor:
@@ -155,5 +159,8 @@ networks:
   caddy_network:
     external: true
     name: caddy_network
+  public_network:
+    external: true
+    name: public_network
   monitoring:
     name: monitoring

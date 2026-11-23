@@ -9,6 +9,13 @@
 
 	servers {
 		trusted_proxies static private_ranges
+		# The visitor's address comes from Cf-Connecting-Ip, which Cloudflare
+		# overwrites on every request. X-Forwarded-For is only the fallback
+		# (LAN requests have neither), and strict mode reads it right to left,
+		# so a visitor-supplied leftmost entry is never taken as the client.
+		# CrowdSec's log parser and the bouncer both key on this value.
+		client_ip_headers Cf-Connecting-Ip X-Forwarded-For
+		trusted_proxies_strict
 	}
 
 	# Prometheus metrics, labelled per host so the monitoring stack's
@@ -19,26 +26,46 @@
 }
 
 # Metrics listener for Prometheus (compose/monitoring). Plain HTTP on a port
-# that is not published to the host, so only containers on caddy_network can
-# reach it. Deliberately not the admin API (:2019): that one can rewrite
+# that is not published to the host, so only containers on caddy_network and
+# public_network can reach it. Deliberately not the admin API (:2019): that one can rewrite
 # Caddy's config and stays bound to localhost.
 http://:2020 {
 	metrics /metrics
+
+	# cloudflared's own /metrics, relayed. cloudflared sits on public_network
+	# only and Prometheus on caddy_network only; Caddy is the one container on
+	# both, so Prometheus scrapes the tunnel through here instead of either
+	# of them joining the other's network.
+	handle /cloudflared/metrics {
+		rewrite * /metrics
+		reverse_proxy cloudflared:2000
+	}
 }
 
 *.dev.{$DOMAIN} {
-	@beszel host beszel.dev.{$DOMAIN}
-	handle @beszel {
-		reverse_proxy beszel:8090
+	# LAN only. Everything in this block is refused unless the connection
+	# itself comes from the LAN. Caddy sees LAN clients with their real
+	# 192.168.x.x address, and every container, cloudflared included, with a
+	# Docker bridge address in 172.16.0.0/12 (checked against live traffic
+	# 2026-11-16). So neither a tunnel ingress rule added by mistake nor a
+	# compromised container can reach an internal route through Caddy.
+	# remote_ip is the peer address, not the X-Forwarded-For-derived client_ip.
+	# This has to be a `handle`, and the first one: a bare `abort @outside`
+	# is ordered after the handle blocks below and would never run.
+	# Consequence: containers cannot call *.dev names. Point them at the
+	# container address instead (http://jellyfin:8096, http://gluetun:8989).
+	@outside not remote_ip 192.168.0.0/16
+	handle @outside {
+		abort
 	}
 
 	@dozzle host dozzle.dev.{$DOMAIN}
 	handle @dozzle {
-		# Dozzle runs with DOZZLE_ENABLE_SHELL + DOZZLE_ENABLE_ACTIONS against a
-		# read-write docker socket, so reaching its UI is equivalent to root on the
-		# host. It ships no auth of its own here and *.dev resolves LAN-wide, so
-		# this basic_auth is the only thing gating that. Do not remove it without
-		# disabling those two features first.
+		# Dozzle is read-only (no shell, no actions, and a socket proxy that
+		# only passes list, inspect, logs, stats and events), but it shows the
+		# logs of every container, and logs carry tokens and personal data. It
+		# ships no auth of its own here and *.dev resolves LAN-wide, so this
+		# basic_auth stays.
 		basic_auth {
 			{$DOZZLE_AUTH_USER} {$DOZZLE_AUTH_HASH}
 		}
@@ -55,9 +82,10 @@ http://:2020 {
 		}
 	}
 
-	@heimdall host heimdall.dev.{$DOMAIN}
-	handle @heimdall {
-		reverse_proxy heimdall:80
+	# Homepage dashboard (config in compose/core/homepage/).
+	@home host home.dev.{$DOMAIN}
+	handle @home {
+		reverse_proxy homepage:3000
 	}
 
 	@immich host immich.dev.{$DOMAIN}
@@ -125,20 +153,6 @@ http://:2020 {
 		reverse_proxy ip-tracker:8000
 	}
 
-	@goaccess host goaccess.dev.{$DOMAIN}
-	handle @goaccess {
-		# 1. Proxy the WebSocket explicitly first
-		handle /ws {
-			reverse_proxy goaccess:7890
-		}
-
-		# 2. Serve static files for everything else
-		handle {
-			root * /var/www/goaccess
-			file_server
-		}
-	}
-
 	@filebrowser host filebrowser.dev.{$DOMAIN}
 	handle @filebrowser {
 		reverse_proxy filebrowser:80
@@ -154,25 +168,6 @@ http://:2020 {
 	@jobagent host jobagent.dev.{$DOMAIN}
 	handle @jobagent {
 		reverse_proxy job-agent:8765
-	}
-
-	# Orca ADE. Port 6768 carries two things: the runtime WebSocket, and the
-	# browser client Orca serves at /web-index.html. One reverse_proxy covers
-	# both — Caddy upgrades the WebSocket transparently. Note that the bare
-	# path / is not a page; the way in is the "Web client URL" printed at
-	# startup, which carries the pairing offer in its URL fragment.
-	#
-	# Reaching a paired Orca runtime means running arbitrary commands as the
-	# service account, in the bind-mounted coding tree, against the stack's
-	# docker-in-docker daemon. Orca authenticates clients itself with
-	# per-device revocable pairing tokens, so this is not the unauthenticated
-	# case dozzle is — but upstream is explicit that the port must not be
-	# exposed to the internet. Keeping it on the LAN-only *.dev wildcard is
-	# that constraint: do not add an ingress rule for it in cloudflared's
-	# config.yml, and do not move it to the public *.{$DOMAIN} block.
-	@orca host orca.dev.{$DOMAIN}
-	handle @orca {
-		reverse_proxy orca:6768
 	}
 
 	# Grafana has its own login (admin credential in secrets/.monitoring.env).

@@ -18,7 +18,6 @@ services:
       - /opt/dockerdata/caddy/data:/data
       - /opt/dockerdata/caddy/config:/config
       - /opt/dockerdata/caddy/logs:/var/log/caddy
-      - /opt/dockerdata/caddy/goaccess:/var/www/goaccess
 
     depends_on:
       crowdsec:
@@ -36,37 +35,7 @@ services:
       start_period: 30s
     networks:
       - caddy_network
-
-  goaccess:
-    image: allinurl/goaccess:1.10.2
-    container_name: goaccess
-    restart: unless-stopped
-    volumes:
-      - /opt/dockerdata/caddy/logs/:/var/log/caddy:ro
-      - /opt/dockerdata/caddy/goaccess:/var/www/goaccess
-      # Directory mount (not a single-file bind): a missing single-file source
-      # is silently turned into an empty dir by Docker, and this path lives in
-      # autorestic's /opt/dockerdata snapshot so the DB is backed up. See CLAUDE.md.
-      - /opt/dockerdata/caddy/geoip:/opt/geoip:ro
-    command: >
-      /var/log/caddy/wildcard-access.log
-      --log-format=CADDY
-      --real-time-html
-      --port=7890
-      --ws-url=wss://goaccess.dev.${DOMAIN}:443/ws
-      --origin=https://goaccess.dev.${DOMAIN}
-      --geoip-database=/opt/geoip/GeoLite2-City.mmdb
-      -o /var/www/goaccess/index.html
-    healthcheck:
-      # Port 7890 only speaks WebSocket (plain HTTP gets a 400), so just
-      # check that the socket accepts connections
-      test: ["CMD", "nc", "-z", "127.0.0.1", "7890"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-    networks:
-      - caddy_network
+      - public_network
 
   crowdsec:
     image: crowdsecurity/crowdsec:v1.8.2
@@ -78,7 +47,7 @@ services:
     volumes:
       - /opt/dockerdata/crowdsec/config:/etc/crowdsec
       - /opt/dockerdata/crowdsec/data:/var/lib/crowdsec/data
-      - /opt/dockerdata/caddy/logs:/var/log/caddy:ro   # same log mount as goaccess
+      - /opt/dockerdata/caddy/logs:/var/log/caddy:ro   # Caddy's access log
       - /var/log:/var/log/host:ro                       # for linux/sshd scenarios
     healthcheck:
       test: ["CMD", "cscli", "version"]
@@ -93,3 +62,6 @@ networks:
   caddy_network:
     external: true
     name: caddy_network
+  public_network:
+    external: true
+    name: public_network

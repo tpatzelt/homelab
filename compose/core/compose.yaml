@@ -1,14 +1,20 @@
 services:
   dozzle:
+    # Log viewer. It has no docker socket of its own: it talks to
+    # dozzle-socket-proxy below, which passes only the read calls a log viewer
+    # needs. Shell and actions are off as well, so there is nothing for them
+    # to call. The basic_auth on its Caddy route stays: container logs carry
+    # tokens and personal data.
     container_name: dozzle
     image: amir20/dozzle:v11.4.3
-    env_file: ./.env
     restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      DOZZLE_ENABLE_ACTIONS: "true"
-      DOZZLE_ENABLE_SHELL: "true"
+      DOCKER_HOST: tcp://dozzle-socket-proxy:2375
+      DOZZLE_ENABLE_ACTIONS: "false"
+      DOZZLE_ENABLE_SHELL: "false"
+    depends_on:
+      dozzle-socket-proxy:
+        condition: service_healthy
     healthcheck:
       # Scratch image, no shell — dozzle ships its own healthcheck command
       test: ["CMD", "/dozzle", "healthcheck"]
@@ -18,6 +24,49 @@ services:
       start_period: 30s
     networks:
       - caddy_network
+      - dozzle_socket
+
+  dozzle-socket-proxy:
+    # The only container that mounts the docker socket for Dozzle. A `:ro`
+    # socket mount does not limit the API (read-only applies to the socket
+    # file, not to the calls sent through it), so the limit is this allowlist:
+    # GET on ping, version, info, events, the container list, and per-container
+    # inspect, logs and stats. Every other path and every other method (POST,
+    # DELETE, PUT: start, stop, exec, create, pull) gets a 403. It is not on
+    # caddy_network; only Dozzle shares dozzle_socket with it, and -allowfrom
+    # refuses any other caller even there.
+    container_name: dozzle-socket-proxy
+    image: wollomatic/socket-proxy:1.13.2
+    restart: unless-stopped
+    # The image's unprivileged user, plus the host's docker group so it can
+    # open the socket.
+    user: "65534:${DOCKER_GID}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - -loglevel=info
+      - -listenip=0.0.0.0
+      - -allowfrom=dozzle
+      - -allowhealthcheck
+      - -watchdoginterval=300
+      - -shutdowngracetime=5
+      # The proxy anchors each regex with ^ and $ itself, and matches the
+      # path without the query string.
+      - -allowGET=/(v1\.[0-9]{1,2}/)?(_ping|version|info|events|containers/json|containers/[a-zA-Z0-9_.-]+/(json|logs|stats))
+      - -allowHEAD=/(v1\.[0-9]{1,2}/)?_ping
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test: ["CMD", "./healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - dozzle_socket
 
   pihole:
     # Network-wide ad blocking DNS server
@@ -74,66 +123,48 @@ services:
     networks:
       - caddy_network
 
-  heimdall:
-    container_name: heimdall
-    image: lscr.io/linuxserver/heimdall:2.8.4
-    env_file: ./.env
+  homepage:
+    # Dashboard. Its whole configuration is the YAML in ./homepage, mounted
+    # read-only as a directory (never single files: see the inode trap in
+    # CLAUDE.md). No docker socket: the tiles are static entries with
+    # siteMonitor, so this container holds no credentials at all.
+    #
+    # It runs as ${PUID}:${PGID} from the start and deliberately has no
+    # env_file: with PUID unset in its environment the image's entrypoint
+    # skips every chown and mkdir it would otherwise attempt on the config
+    # mount, and the Pi-hole password in core's .env stays out of it.
+    # LOG_TARGETS=stdout stops it writing config/logs/homepage.log, which is
+    # the only thing it would otherwise write into the repo directory.
+    # The image's /app/.next cache is owned by uid 1000; a different PUID
+    # would lose the page cache (it still serves).
+    container_name: homepage
+    image: ghcr.io/gethomepage/homepage:v2.8.0
+    user: "${PUID}:${PGID}"
     restart: unless-stopped
-    volumes:
-      - /opt/dockerdata/heimdall:/config
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
-    networks:
-      - caddy_network
-
-  beszel:
-    image: henrygd/beszel:0.21.2
-    container_name: beszel
-    env_file: ./.env
-    restart: unless-stopped
-    volumes:
-      - /opt/dockerdata/beszel_data:/beszel_data
-      - /var/run/beszel-socket:/beszel_socket
-    healthcheck:
-      # Scratch image, no shell — beszel ships its own health command
-      test: ["CMD", "/beszel", "health", "--url", "http://localhost:8090"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-    networks:
-      - caddy_network
-
-  beszel-agent:
-    image: henrygd/beszel-agent:0.21.2
-    container_name: beszel-agent
-    env_file: ./.env
-    restart: unless-stopped
-    network_mode: host
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /var/run/beszel-socket:/beszel_socket
-      - /opt/dockerdata/beszel_agent_data:/var/lib/beszel-agent
-      - /mnt/storage/.beszel:/extra-filesystems/sdb2__Storage:ro
     environment:
-      PORT: 45876
-      KEY: '${BESZEL_AGENT_KEY}'
-      TOKEN: '${BESZEL_TOKEN}'
-      HUB_URL: '${BESZEL_HUB_URL}'
-      LISTEN: /beszel_socket/beszel.sock
+      # Its Caddy host name, plus the container address the blackbox probe
+      # uses. Any other Host header gets a 400.
+      HOMEPAGE_ALLOWED_HOSTS: home.dev.${DOMAIN},homepage:3000
+      HOMEPAGE_VAR_DOMAIN: ${DOMAIN}
+      LOG_TARGETS: stdout
+    volumes:
+      - ./homepage:/app/config:ro
     healthcheck:
-      # Scratch image, no shell — the agent binary checks its own socket
-      test: ["CMD", "/agent", "health"]
+      # The image's own check, restated so the interval matches the others.
+      # 127.0.0.1 is always an allowed host.
+      test: ["CMD", "wget", "-q", "--spider", "-Y", "off", "http://127.0.0.1:3000/api/healthcheck"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 30s
+    networks:
+      - caddy_network
 
 networks:
   caddy_network:
     external: true
     name: caddy_network
+  # Dozzle and its socket proxy, nothing else. internal: no route out.
+  dozzle_socket:
+    name: dozzle_socket
+    internal: true

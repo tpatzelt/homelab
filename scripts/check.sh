@@ -155,8 +155,11 @@ import glob, json, os, re, sys
 work = os.environ["WORK_DIR"]
 names = set()      # service names + container_names with their own netns
 proxied = {}       # names whose netns is borrowed (network_mode: service:X)
+nets = {}          # name -> set of docker network names the container joins
 for path in glob.glob(os.path.join(work, "stacks", "*", "config.json")):
-    services = json.load(open(path)).get("services", {})
+    config = json.load(open(path))
+    netdefs = config.get("networks", {})
+    services = config.get("services", {})
     for svc, spec in services.items():
         mode = spec.get("network_mode", "")
         aliases = {svc, spec.get("container_name", svc)}
@@ -165,6 +168,17 @@ for path in glob.glob(os.path.join(work, "stacks", "*", "config.json")):
                 proxied[a] = mode
         else:
             names |= aliases
+            joined = {netdefs.get(k, {}).get("name", k) for k in (spec.get("networks") or {})}
+            for a in aliases:
+                nets[a] = joined
+
+# Caddy reaches an upstream only over a network both are on. Internal
+# services share caddy_network with it, internet-facing ones public_network.
+caddy_nets = nets.get("caddy", set())
+# The only containers allowed on both: Caddy routes to both sides, and
+# blackbox-exporter probes both. Anything else on both would bridge the
+# public sites back to the internal services.
+BOTH_ALLOWED = {"caddy", "blackbox-exporter"}
 
 # Containers Caddy proxies that are deployed from their own repository rather
 # than from a stack here. They still have to join caddy_network, but no
@@ -199,9 +213,72 @@ for line in open("compose/caddy/Caddyfile"):
             print(f"    FAIL: reverse_proxy -> {host}: no compose service or "
                   f"container with that name")
             fail = True
+        elif not (nets.get(host, set()) & caddy_nets):
+            print(f"    FAIL: reverse_proxy -> {host}: shares no network with caddy "
+                  f"(it is on {sorted(nets.get(host, set())) or 'none'}, caddy on "
+                  f"{sorted(caddy_nets)})")
+            fail = True
         else:
-            print(f"    ok: {host}")
+            print(f"    ok: {host} ({', '.join(sorted(nets[host] & caddy_nets))})")
 
+for name in sorted(nets):
+    if {"caddy_network", "public_network"} <= nets[name] and name not in BOTH_ALLOWED:
+        print(f"    FAIL: {name} is on both caddy_network and public_network; only "
+              f"{sorted(BOTH_ALLOWED)} may bridge them")
+        fail = True
+
+sys.exit(1 if fail else 0)
+PY
+}
+
+# Every upstream Caddy proxies to must have a blackbox probe line in
+# prometheus.yml. A route without one never appears on the Overview dashboard
+# and never alerts, and nothing else flags that. Matching is on host:port, the
+# same address Caddy uses, so the *arr apps are matched as gluetun:<port>.
+# Probes with no Caddy route (crowdsec, caddy itself) are fine.
+check_probe_coverage() {
+  python3 - <<'PY'
+import re, sys
+from urllib.parse import urlsplit
+
+DEFAULT_PORT = {"http": 80, "https": 443}
+
+def hostport(url):
+    if "://" not in url:
+        url = "http://" + url
+    u = urlsplit(url)
+    return f"{u.hostname}:{u.port or DEFAULT_PORT.get(u.scheme, 80)}"
+
+upstreams = {}
+for line in open("compose/caddy/Caddyfile"):
+    tokens = line.split()
+    if not tokens or tokens[0] != "reverse_proxy":
+        continue
+    for tok in tokens[1:]:
+        if tok == "{":
+            break
+        upstreams.setdefault(hostport(tok), tok)
+
+# Probe targets are the "service=url" items of the blackbox job.
+text = open("compose/monitoring/prometheus/prometheus.yml").read()
+block = text.split("job_name: blackbox", 1)[1].split("relabel_configs:", 1)[0]
+probes = {}
+for m in re.finditer(r"^\s*-\s*([A-Za-z0-9_.-]+)=(\S+)\s*$", block, re.M):
+    probes[hostport(m.group(2))] = m.group(1)
+
+if not probes:
+    print("    FAIL: found no blackbox probe targets in prometheus.yml")
+    sys.exit(1)
+
+fail = False
+for hp, tok in sorted(upstreams.items()):
+    if hp in probes:
+        print(f"    ok: {tok} -> probe '{probes[hp]}'")
+    else:
+        print(f"    FAIL: reverse_proxy {tok} has no blackbox probe; add a "
+              f"'<name>=http://{hp}/<health path>' line to the blackbox job in "
+              f"compose/monitoring/prometheus/prometheus.yml")
+        fail = True
 sys.exit(1 if fail else 0)
 PY
 }
@@ -253,9 +330,14 @@ check_readme_table() {
 }
 
 # Tracked plus untracked-but-not-ignored, so new files are linted before the
-# first `git add`.
+# first `git add`. Files deleted in the work tree but not yet committed are
+# still in the index, so drop anything that no longer exists.
 repo_files() {
-  git ls-files -c -o --exclude-standard "$@" | sort -u
+  local f
+  git ls-files -c -o --exclude-standard "$@" | sort -u | while IFS= read -r f; do
+    [[ -e "$f" ]] && printf '%s\n' "$f"
+  done
+  return 0
 }
 
 check_shellcheck() {
@@ -288,8 +370,8 @@ check_yamllint() {
 # (gitignored config, unbacked data) and that Docker silently replaces with an
 # empty *directory* when the source is missing — the failure then hides until
 # the next container recreate, because a running container keeps the deleted
-# inode open (this is exactly how cloudflared's config.yml and the GeoLite2 DB
-# went missing; see CLAUDE.md). Assert each is present AND a regular file, so
+# inode open (this is exactly how cloudflared's config.yml went missing; see
+# CLAUDE.md). Assert each is present AND a regular file, so
 # the rot surfaces here instead of on the next `restart-services.sh`.
 # Skipped in CI, where these host paths legitimately don't exist.
 check_required_host_files() {
@@ -301,7 +383,6 @@ check_required_host_files() {
   local files=(
     /opt/dockerdata/cloudflared/config.yml
     /opt/dockerdata/cloudflared/creds.json
-    /opt/dockerdata/caddy/geoip/GeoLite2-City.mmdb
   )
   for f in "${files[@]}"; do
     if [[ -f "$f" ]]; then
@@ -421,6 +502,7 @@ run_check "compose config (all stacks)"        check_compose_config
 run_check "env completeness (compose vs example)" check_env_completeness
 run_check "caddy validate"                     check_caddy_validate
 run_check "caddyfile upstreams vs compose"     check_caddy_upstreams
+run_check "blackbox probe per caddy upstream"  check_probe_coverage
 run_check "autorestic locations in sync"       check_autorestic_locations
 run_check "env example exists per stack"       check_env_examples_exist
 run_check "README service table coverage"      check_readme_table

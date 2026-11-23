@@ -1,0 +1,26 @@
+---
+# Homepage (gethomepage.dev) settings. The whole dashboard is these YAML
+# files: edit, save, reload the page. The directory is mounted read-only, so
+# nothing the container does can change it.
+title: Homelab
+headerStyle: clean
+statusStyle: dot
+hideVersion: true
+target: _blank
+
+layout:
+  Media:
+    style: row
+    columns: 4
+  Downloads:
+    style: row
+    columns: 4
+  Apps:
+    style: row
+    columns: 4
+  Admin:
+    style: row
+    columns: 4
+  Public sites:
+    style: row
+    columns: 4
