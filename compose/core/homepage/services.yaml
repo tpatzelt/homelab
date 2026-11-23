@@ -11,6 +11,13 @@
 # purpose: each needs an API key. Add them one at a time, with the key in
 # secrets/.core.env as HOMEPAGE_VAR_<NAME>_KEY.
 
+- Home:
+    - Home Assistant:
+        icon: home-assistant.png
+        href: https://homeassistant.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Home automation
+        siteMonitor: http://host.docker.internal:8123/manifest.json
+
 - Media:
     - Jellyfin:
         icon: jellyfin.png

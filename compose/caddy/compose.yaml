@@ -33,6 +33,9 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+    # homeassistant runs with network_mode: host
+    extra_hosts:
+      - host.docker.internal:host-gateway
     networks:
       - caddy_network
       - public_network

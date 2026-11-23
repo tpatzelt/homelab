@@ -92,6 +92,9 @@ scrape_configs:
           - immich=http://immich-server:2283/api/server/ping
           - navidrome=http://navidrome:4533/ping
           - seerr=http://seerr:5055/api/v1/status
+      - labels: {stack: homeassistant}
+        targets:
+          - homeassistant=http://host.docker.internal:8123/manifest.json
       - labels: {stack: utilities}
         targets:
           - vaultwarden=http://vaultwarden:80/alive

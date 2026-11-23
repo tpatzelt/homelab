@@ -25,6 +25,7 @@ public ones on `*.example.com` via a Cloudflare Tunnel.
 | | Sonarr / Radarr / Lidarr | `sonarr.` / `radarr.` / `lidarr.dev.example.com` | TV / movie / music management (via VPN) |
 | | Bazarr / Prowlarr | `bazarr.` / `prowlarr.dev.example.com` | Subtitles / indexers (via VPN) |
 | **seerr** | Seerr | `seerr.dev.example.com` | Media requests |
+| **homeassistant** | Home Assistant | `homeassistant.dev.example.com` | Home automation (host network, for device discovery) |
 | **jellyfin** | Jellyfin | `jellyfin.dev.example.com` | Media server (LAN only — no tunnel, see below) |
 | **immich** | Immich | `immich.dev.example.com` | Photo/video backup |
 | **navidrome** | Navidrome | `navidrome.dev.example.com` | Music streaming (Subsonic API) |
@@ -111,7 +112,7 @@ the tracked template to copy from.
 
 2. **Symlink them into the stacks** (repeat per stack; cloudflared needs none):
    ```bash
-   for d in annabel-rene arr birthday-bash caddy core filebrowser immich isponsorblocktv jellyfin job-agent monitoring pendel bikes reel-recipes seerr utilities vaultwarden; do
+   for d in annabel-rene arr birthday-bash caddy core filebrowser homeassistant immich isponsorblocktv jellyfin job-agent monitoring pendel bikes reel-recipes seerr utilities vaultwarden; do
      ln -s "../../secrets/.$d.env" "compose/$d/.env"
    done
    ln -s ../../secrets/.navidrom.env compose/navidrome/.env   # filename typo is intentional
@@ -129,7 +130,7 @@ the tracked template to copy from.
    ```bash
    docker compose -f compose/caddy/compose.yaml up -d
    docker compose -f compose/core/compose.yaml up -d
-   for s in arr cloudflared immich isponsorblocktv jellyfin job-agent monitoring navidrome filebrowser seerr vaultwarden utilities annabel-rene birthday-bash pendel bikes reel-recipes; do
+   for s in arr cloudflared homeassistant immich isponsorblocktv jellyfin job-agent monitoring navidrome filebrowser seerr vaultwarden utilities annabel-rene birthday-bash pendel bikes reel-recipes; do
      docker compose -f compose/$s/compose.yaml up -d
    done
    ```

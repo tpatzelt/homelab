@@ -149,6 +149,9 @@ services:
       LOG_TARGETS: stdout
     volumes:
       - ./homepage:/app/config:ro
+    # siteMonitor for homeassistant, which runs with network_mode: host
+    extra_hosts:
+      - host.docker.internal:host-gateway
     healthcheck:
       # The image's own check, restated so the interval matches the others.
       # 127.0.0.1 is always an allowed host.

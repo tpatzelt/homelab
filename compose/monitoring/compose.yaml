@@ -90,6 +90,9 @@ services:
     command: ["--config.file=/etc/blackbox/blackbox.yml"]
     volumes:
       - ./blackbox:/etc/blackbox:ro
+    # homeassistant runs with network_mode: host
+    extra_hosts:
+      - host.docker.internal:host-gateway
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9115/-/healthy"]
       interval: 30s

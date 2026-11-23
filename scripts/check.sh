@@ -156,6 +156,8 @@ work = os.environ["WORK_DIR"]
 names = set()      # service names + container_names with their own netns
 proxied = {}       # names whose netns is borrowed (network_mode: service:X)
 nets = {}          # name -> set of docker network names the container joins
+host_mode = set()  # services with network_mode: host
+extra_hosts = {}   # name -> extra_hosts as compose config renders it
 for path in glob.glob(os.path.join(work, "stacks", "*", "config.json")):
     config = json.load(open(path))
     netdefs = config.get("networks", {})
@@ -163,6 +165,11 @@ for path in glob.glob(os.path.join(work, "stacks", "*", "config.json")):
     for svc, spec in services.items():
         mode = spec.get("network_mode", "")
         aliases = {svc, spec.get("container_name", svc)}
+        for a in aliases:
+            eh = spec.get("extra_hosts") or []
+            extra_hosts[a] = [f"{k}:{v}" for k, v in eh.items()] if isinstance(eh, dict) else eh
+        if mode == "host":
+            host_mode.add(spec.get("container_name", svc))
         if mode.startswith(("service:", "container:")):
             for a in aliases:
                 proxied[a] = mode
@@ -202,7 +209,22 @@ for line in open("compose/caddy/Caddyfile"):
         if host in seen:
             continue
         seen.add(host)
-        if host in EXTERNAL:
+        if host == "host.docker.internal":
+            # A network_mode: host service, reached via the Docker host
+            # gateway. Caddy needs the extra_hosts entry and some stack must
+            # actually run on the host network.
+            caddy_hosts = " ".join(map(str, extra_hosts.get("caddy", [])))
+            if "host.docker.internal" not in caddy_hosts:
+                print(f"    FAIL: reverse_proxy -> {host}: caddy lacks extra_hosts "
+                      f"host.docker.internal:host-gateway")
+                fail = True
+            elif not host_mode:
+                print(f"    FAIL: reverse_proxy -> {host}: no service runs with "
+                      f"network_mode: host")
+                fail = True
+            else:
+                print(f"    ok: {host} (host network: {', '.join(sorted(host_mode))})")
+        elif host in EXTERNAL:
             print(f"    ok: {host} (external — {EXTERNAL[host]})")
         elif host in proxied:
             print(f"    FAIL: reverse_proxy -> {host}: container runs with "
