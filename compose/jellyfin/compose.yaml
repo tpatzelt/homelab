@@ -2,7 +2,7 @@ services:
   jellyfin:
     # Jellyfin media server (LinuxServer image)
     container_name: jellyfin
-    image: lscr.io/linuxserver/jellyfin:12.4ubu2604-ls59
+    image: lscr.io/linuxserver/jellyfin:12.4ubu2604-ls60
     deploy:
       resources:
         limits:
