@@ -1,0 +1,8 @@
+---
+# Header widgets. Only ones that need no API key and no host access.
+- datetime:
+    text_size: xl
+    format:
+      dateStyle: long
+      timeStyle: short
+      hourCycle: h23

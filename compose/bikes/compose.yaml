@@ -14,10 +14,13 @@ services:
       BIKES_SITE_DIR: /data/site
     volumes:
       - /opt/dockerdata/bikes:/data
+    # This site is reachable from the internet, so it sits on public_network
+    # with Caddy and the other public sites only. It cannot reach any
+    # internal service.
     networks:
-      - caddy_network
+      - public_network
 
 networks:
-  caddy_network:
+  public_network:
     external: true
-    name: caddy_network
+    name: public_network

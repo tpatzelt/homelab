@@ -7,6 +7,11 @@ services:
     restart: unless-stopped
     volumes:
       - /mnt/storage/data:/srv
+      # Immich's library is browsable but not writable from here: a read-only
+      # mount of the same folder laid over the read-write parent. Immich owns
+      # those files; a rename or delete from the file manager would leave its
+      # database pointing at nothing. Immich's own mount is not affected.
+      - /mnt/storage/data/Immich:/srv/Immich:ro
       - /opt/dockerdata/filebrowser/database:/database
       - /opt/dockerdata/filebrowser/config:/config
     networks:

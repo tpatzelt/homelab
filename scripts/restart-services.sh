@@ -24,11 +24,50 @@
 # --ignore-buildable skips locally-built images (caddy) that have no registry
 # to pull from — this script only restarts; rebuilding caddy is a separate,
 # explicit `docker compose -f compose/caddy/compose.yaml build` step.
+#
+# Deploy guard: this tree is also a work tree, so the script refuses to run
+# unless it is on `main` with no uncommitted changes to tracked files. A
+# redeploy from a stale branch silently rolls back image bumps and drops
+# routes. Override deliberately with --force or ALLOW_DIRTY_DEPLOY=1.
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
+
+FORCE="${ALLOW_DIRTY_DEPLOY:-0}"
+for arg in "$@"; do
+  case "$arg" in
+    --force) FORCE=1 ;;
+    -h|--help)
+      echo "usage: $0 [--force]   (--force or ALLOW_DIRTY_DEPLOY=1 skips the clean-main check)"
+      exit 0
+      ;;
+    *)
+      echo "unknown argument: $arg" >&2
+      exit 2
+      ;;
+  esac
+done
+
+branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
+dirty="$(git status --porcelain --untracked-files=no 2>/dev/null || echo unknown)"
+if [[ "$branch" != "main" || -n "$dirty" ]]; then
+  if [[ "$FORCE" == "1" ]]; then
+    echo "==> WARNING: guard overridden; deploying from branch '${branch}'${dirty:+ with uncommitted changes}"
+  else
+    {
+      echo "refusing to deploy: this tree must be on 'main' with no uncommitted changes."
+      echo "  branch: ${branch}"
+      if [[ -n "$dirty" ]]; then
+        echo "  uncommitted changes to tracked files:"
+        printf '%s\n' "$dirty" | sed 's/^/    /'
+      fi
+      echo "  override with --force or ALLOW_DIRTY_DEPLOY=1"
+    } >&2
+    exit 1
+  fi
+fi
 
 FIRST=(caddy core)
 
@@ -43,15 +82,23 @@ for stack in "${ALL_STACKS[@]}"; do
 done
 STACKS=("${FIRST[@]}" "${REMAINING[@]}")
 
-if ! docker network inspect caddy_network >/dev/null 2>&1; then
-  echo "==> creating caddy_network"
-  docker network create caddy_network
-fi
+for net in caddy_network public_network; do
+  if ! docker network inspect "$net" >/dev/null 2>&1; then
+    echo "==> creating ${net}"
+    docker network create "$net"
+  fi
+done
 
 for stack in "${STACKS[@]}"; do
   compose_file="compose/${stack}/compose.yaml"
   if [[ ! -f "$compose_file" ]]; then
     echo "==> skipping ${stack} (no compose.yaml)"
+    continue
+  fi
+  # A gitignored compose/<stack>/.disabled marker parks a stack (see
+  # scripts/arr-stack.sh); bringing it up would hang on gluetun's healthcheck.
+  if [[ -f "compose/${stack}/.disabled" ]]; then
+    echo "==> skipping ${stack} (parked: compose/${stack}/.disabled)"
     continue
   fi
   echo "==> pulling ${stack}"

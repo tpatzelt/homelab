@@ -9,8 +9,11 @@ services:
     env_file: ./.env
     volumes:
       - /opt/dockerdata/pendel:/data
+    # This site is reachable from the internet, so it sits on public_network
+    # with Caddy and the other public sites only. It cannot reach any
+    # internal service.
     networks:
-      - caddy_network
+      - public_network
 
   pendel-scheduler:
     image: ghcr.io/tpatzelt/mein-pendel:latest
@@ -37,6 +40,6 @@ services:
       disable: true
 
 networks:
-  caddy_network:
+  public_network:
     external: true
-    name: caddy_network
+    name: public_network

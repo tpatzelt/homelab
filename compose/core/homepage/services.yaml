@@ -1,0 +1,149 @@
+---
+# One tile per Caddy route. `href` is the address a browser uses; the domain
+# comes from HOMEPAGE_VAR_DOMAIN so the real one stays out of the repo.
+# `siteMonitor` is what Homepage itself polls for the up/down dot: the same
+# container address Caddy proxies to (gluetun:<port> for the *arr apps).
+# The public sites are the exception: they live on public_network, which this
+# container does not join, so they are checked through their public URL, the
+# whole way out through Cloudflare and back in through the tunnel.
+#
+# App widgets (Pi-hole, Immich, the *arr apps, Jellyfin) are left out on
+# purpose: each needs an API key. Add them one at a time, with the key in
+# secrets/.core.env as HOMEPAGE_VAR_<NAME>_KEY.
+
+- Home:
+    - Home Assistant:
+        icon: home-assistant.png
+        href: https://homeassistant.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Home automation
+        siteMonitor: http://host.docker.internal:8123/manifest.json
+
+- Media:
+    - Jellyfin:
+        icon: jellyfin.png
+        href: https://jellyfin.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Movies and shows
+        siteMonitor: http://jellyfin:8096/health
+    - Navidrome:
+        icon: navidrome.png
+        href: https://navidrome.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Music
+        siteMonitor: http://navidrome:4533/ping
+    - Immich:
+        icon: immich.png
+        href: https://immich.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Photos
+        siteMonitor: http://immich-server:2283/api/server/ping
+    - Seerr:
+        icon: seerr.png
+        href: https://seerr.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Media requests
+        siteMonitor: http://seerr:5055/api/v1/status
+
+- Downloads:
+    - Sonarr:
+        icon: sonarr.png
+        href: https://sonarr.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Shows
+        siteMonitor: http://gluetun:8989/ping
+    - Radarr:
+        icon: radarr.png
+        href: https://radarr.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Movies
+        siteMonitor: http://gluetun:7878/ping
+    - Lidarr:
+        icon: lidarr.png
+        href: https://lidarr.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Music
+        siteMonitor: http://gluetun:8686/ping
+    - Bazarr:
+        icon: bazarr.png
+        href: https://bazarr.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Subtitles
+        siteMonitor: http://gluetun:6767
+    - Prowlarr:
+        icon: prowlarr.png
+        href: https://prowlarr.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Indexers
+        siteMonitor: http://gluetun:9696/ping
+    - qBittorrent:
+        icon: qbittorrent.png
+        href: https://qbittorrent.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Torrents, through the VPN
+        siteMonitor: http://gluetun:8081
+
+- Apps:
+    - Vaultwarden:
+        icon: vaultwarden.png
+        href: https://vaultwarden.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Passwords
+        siteMonitor: http://vaultwarden:80/alive
+    - Karakeep:
+        icon: karakeep.png
+        href: https://karakeep.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Bookmarks
+        siteMonitor: http://karakeep:3000/api/health
+    - File Browser:
+        icon: filebrowser.png
+        href: https://filebrowser.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Files on the storage disk
+        siteMonitor: http://filebrowser:80/health
+    - Job agent:
+        icon: mdi-briefcase-search
+        href: https://jobagent.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Job application agent
+        siteMonitor: http://job-agent:8765
+    - IP tracker:
+        icon: mdi-ip-network
+        href: https://iptracker.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Public IP history
+        siteMonitor: http://ip-tracker:8000
+
+- Admin:
+    - Grafana:
+        icon: grafana.png
+        href: https://grafana.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Dashboards and alerts
+        siteMonitor: http://grafana:3000/api/health
+    - Pi-hole:
+        icon: pi-hole.png
+        href: https://pihole.dev.{{HOMEPAGE_VAR_DOMAIN}}/admin/
+        description: DNS and ad blocking
+        siteMonitor: https://pihole:443/admin/
+    - Dozzle:
+        icon: dozzle.png
+        href: https://dozzle.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Container logs
+        siteMonitor: http://dozzle:8080/healthcheck
+    - Nightshift:
+        icon: mdi-weather-night
+        href: https://nightshift.dev.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Autonomous Claude Code runner
+        siteMonitor: http://nightshift-web:8080/api/health
+
+- Public sites:
+    - Wedding site:
+        icon: mdi-ring
+        href: https://annabel-rene.{{HOMEPAGE_VAR_DOMAIN}}
+        description: annabel-rene
+        siteMonitor: https://annabel-rene.{{HOMEPAGE_VAR_DOMAIN}}
+    - Birthday bash:
+        icon: mdi-cake-variant
+        href: https://jonas.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Browser game
+        siteMonitor: https://jonas.{{HOMEPAGE_VAR_DOMAIN}}
+    - Mein Pendel:
+        icon: mdi-train
+        href: https://pendel.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Commute disruption alerts
+        siteMonitor: https://pendel.{{HOMEPAGE_VAR_DOMAIN}}/healthz
+    - Wie Berlin radelt:
+        icon: mdi-bike
+        href: https://bikes.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Bike-share availability
+        siteMonitor: https://bikes.{{HOMEPAGE_VAR_DOMAIN}}/healthz
+    - Reel Recipes:
+        icon: mdi-chef-hat
+        href: https://rezepte.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Recipes from Instagram reels
+        siteMonitor: https://rezepte.{{HOMEPAGE_VAR_DOMAIN}}/api/config

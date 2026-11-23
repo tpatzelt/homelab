@@ -20,10 +20,13 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    # public_network only: the tunnel needs Caddy and nothing else. It is the
+    # one container that takes traffic straight from the internet, so it must
+    # not sit on the network the internal services share.
     networks:
-      - caddy_network
+      - public_network
 
 networks:
-  caddy_network:
+  public_network:
     external: true
-    name: caddy_network
+    name: public_network

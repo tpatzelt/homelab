@@ -123,9 +123,14 @@ recreate it, e.g. `ln -s ../../secrets/.caddy.env compose/caddy/.env`.
 ### 5. Redeploy the stacks
 
 ```bash
-docker network create caddy_network      # external net must exist first
+docker network create caddy_network      # external nets must exist first
+docker network create public_network     # (the script also creates both if missing)
 ./scripts/restart-services.sh            # walks caddy -> core -> rest in order
 ```
+
+The script refuses to run unless the checkout is on `main` with no uncommitted
+changes. A fresh clone is; if you restored a work tree that is not, check it
+out first or pass `--force`.
 
 ### 6. Verify
 

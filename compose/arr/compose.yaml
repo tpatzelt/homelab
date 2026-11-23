@@ -21,6 +21,11 @@ services:
       # Port forwarding for torrents (must match qBittorrent listening port)
       - FIREWALL_VPN_INPUT_PORTS=49906
       - VPN_IPV6=off
+      # gluetun's control server can stop the VPN and its legacy routes need
+      # no authentication. Nothing here uses it, so keep it off caddy_network.
+      # Set here rather than in .arr.env: it is not a secret, and a tracked
+      # line survives a rebuilt env file.
+      - HTTP_CONTROL_SERVER_ADDRESS=127.0.0.1:8000
     volumes:
       - /opt/dockerdata/gluetun:/gluetun
     restart: unless-stopped

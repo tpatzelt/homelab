@@ -14,12 +14,10 @@ public ones on `*.example.com` via a Cloudflare Tunnel.
 | Stack | Service | Subdomain | Description |
 |-------|---------|-----------|-------------|
 | **caddy** | Caddy | — | Reverse proxy, wildcard TLS via Cloudflare DNS-01, CrowdSec bouncer |
-| | GoAccess | `goaccess.dev.example.com` | Access-log analytics (GeoIP) |
 | | CrowdSec | — | Intrusion detection feeding the Caddy bouncer |
 | **core** | Pi-hole | `pihole.dev.example.com` | Network-wide ad-blocking DNS |
-| | Dozzle | `dozzle.dev.example.com` | Real-time Docker log viewer |
-| | Heimdall | `heimdall.dev.example.com` | Application dashboard |
-| | Beszel (+agent) | `beszel.dev.example.com` | Server monitoring |
+| | Dozzle (+ socket proxy) | `dozzle.dev.example.com` | Real-time Docker log viewer, read-only (basic_auth) |
+| | Homepage | `home.dev.example.com` | Application dashboard, configured in `compose/core/homepage/` |
 | **monitoring** | Grafana | `grafana.dev.example.com` | Dashboards: service uptime, containers, host, traffic |
 | | Prometheus (+ cAdvisor, node-exporter, blackbox-exporter) | — | Metrics + per-service HTTP probes feeding Grafana |
 | **arr** | Gluetun | — | VPN gateway (AirVPN, WireGuard) |
@@ -27,6 +25,7 @@ public ones on `*.example.com` via a Cloudflare Tunnel.
 | | Sonarr / Radarr / Lidarr | `sonarr.` / `radarr.` / `lidarr.dev.example.com` | TV / movie / music management (via VPN) |
 | | Bazarr / Prowlarr | `bazarr.` / `prowlarr.dev.example.com` | Subtitles / indexers (via VPN) |
 | **seerr** | Seerr | `seerr.dev.example.com` | Media requests |
+| **homeassistant** | Home Assistant | `homeassistant.dev.example.com` | Home automation (host network, for device discovery) |
 | **jellyfin** | Jellyfin | `jellyfin.dev.example.com` | Media server (LAN only — no tunnel, see below) |
 | **immich** | Immich | `immich.dev.example.com` | Photo/video backup |
 | **navidrome** | Navidrome | `navidrome.dev.example.com` | Music streaming (Subsonic API) |
@@ -35,7 +34,7 @@ public ones on `*.example.com` via a Cloudflare Tunnel.
 | **utilities** | Karakeep | `karakeep.dev.example.com` | Bookmark manager (+ Meilisearch, Chrome) |
 | | ip-tracker | `iptracker.dev.example.com` | Public-IP change tracker |
 | **job-agent** | job-agent | `jobagent.dev.example.com` | Telegram job-application agent (+ read-only monitoring dashboard) |
-| **orca** | Orca ADE | `orca.dev.example.com` | Agent development environment, headless `orca serve` (+ docker-in-docker sidecar) |
+| **isponsorblocktv** | iSponsorBlockTV | — | Skips SponsorBlock segments + ads on YouTube TV apps (outbound-only, no UI) |
 | **cloudflared** | cloudflared | — | Cloudflare Tunnel — the only public ingress |
 | **annabel-rene** | Wedding site | `annabel-rene.example.com` | Public static site, served through the tunnel |
 | **birthday-bash** | birthday-bash | `jonas.example.com` | Static browser game (nginx), stateless, served through the tunnel |
@@ -59,26 +58,33 @@ LAN-only `*.dev` wildcard, and it must not be given a cloudflared ingress rule.
                         Internet
                             │
               Cloudflare Tunnel (cloudflared)          ← no forwarded router ports
-                            │
+                            │ public_network
              ┌──────────────▼──────────────┐
-   LAN ─────►│      Caddy (80/443)         │
+   LAN ─────►│      Caddy (80/443)         │──── public_network ──► the 5 public sites
              │  wildcard TLS · CrowdSec    │
              │  security headers · logs    │
              └──────────────┬──────────────┘
                             │ caddy_network
-      ┌─────────────────────┼──────────────────────┐
-      │                     │                      │
-  most services         gluetun ◄─ gluetun_network │  beszel-agent
-  (pihole, immich,      (VPN)      qbittorrent,    │  (host network)
-  jellyfin, vault-                 sonarr, radarr, │
-  warden, …)                       lidarr, bazarr, │
-                                   prowlarr        │
+      ┌─────────────────────┴──────────────────────┐
+      │                                            │
+  internal services      gluetun ◄─ gluetun_network
+  (pihole, immich,       (VPN)      qbittorrent, sonarr,
+  jellyfin, vault-                  radarr, lidarr,
+  warden, …)                        bazarr, prowlarr
 ```
 
-- **caddy_network** (external, create once): everything reachable behind Caddy.
+- **caddy_network** (external, create once): the internal services behind Caddy.
+- **public_network** (external, create once): cloudflared and the five public
+  sites. Only Caddy and blackbox-exporter are on both networks, so a
+  compromised public site can reach Caddy and the other public sites but no
+  internal service.
 - **gluetun_network**: *arr services run with `network_mode: service:gluetun`,
   so all their traffic exits through the VPN. Caddy proxies to `gluetun:<port>`
   for them, not to their container names.
+- **`*.dev` is LAN-only by source address**: Caddy aborts any `*.dev` request
+  that does not come from `192.168.0.0/16`, which shuts out the tunnel and
+  every container. Containers must call each other by container name, not by
+  `*.dev` URL.
 - **Cloudflare Tunnel** is the only path in from the internet. It terminates at
   `https://caddy:443` (not the app container) so public traffic still passes
   CrowdSec, the security headers, and the access log. Jellyfin is deliberately
@@ -106,7 +112,7 @@ the tracked template to copy from.
 
 2. **Symlink them into the stacks** (repeat per stack; cloudflared needs none):
    ```bash
-   for d in annabel-rene arr birthday-bash caddy core filebrowser immich jellyfin job-agent monitoring pendel bikes reel-recipes seerr utilities vaultwarden; do
+   for d in annabel-rene arr birthday-bash caddy core filebrowser homeassistant immich isponsorblocktv jellyfin job-agent monitoring pendel bikes reel-recipes seerr utilities vaultwarden; do
      ln -s "../../secrets/.$d.env" "compose/$d/.env"
    done
    ln -s ../../secrets/.navidrom.env compose/navidrome/.env   # filename typo is intentional
@@ -114,16 +120,17 @@ the tracked template to copy from.
      /opt/dockerdata/cloudflared/config.yml  # then edit with the real tunnel UUID + hostname
    ```
 
-3. **Create the shared network:**
+3. **Create the two shared networks:**
    ```bash
    docker network create caddy_network
+   docker network create public_network
    ```
 
 4. **Start stacks (order matters: caddy → core → the rest):**
    ```bash
    docker compose -f compose/caddy/compose.yaml up -d
    docker compose -f compose/core/compose.yaml up -d
-   for s in arr cloudflared immich jellyfin job-agent monitoring navidrome filebrowser seerr vaultwarden utilities annabel-rene birthday-bash pendel bikes reel-recipes; do
+   for s in arr cloudflared homeassistant immich isponsorblocktv jellyfin job-agent monitoring navidrome filebrowser seerr vaultwarden utilities annabel-rene birthday-bash pendel bikes reel-recipes; do
      docker compose -f compose/$s/compose.yaml up -d
    done
    ```
@@ -137,7 +144,8 @@ the tracked template to copy from.
 
 `scripts/check.sh` runs an offline validation harness over the whole repo:
 `docker compose config` on every stack, env-template completeness,
-`caddy validate` plus Caddyfile-upstream/compose consistency (gluetun-aware),
+`caddy validate` plus Caddyfile-upstream/compose consistency (gluetun- and
+network-aware), a blackbox probe for every Caddy upstream,
 autorestic `LOCATIONS` sync, README service-table coverage, shellcheck,
 yamllint (config in `.yamllint`), and a warn-only image-pinning report.
 
@@ -179,7 +187,7 @@ only). Four provisioned dashboards, in the **Homelab** folder:
 
 "Up" comes from blackbox-exporter probing each service at the same upstream
 Caddy proxies to (list in `compose/monitoring/prometheus/prometheus.yml` —
-add a line there when adding a Caddy route). Dashboards are files in
+`check.sh` fails if a Caddy route has no probe line there). Dashboards are files in
 `compose/monitoring/grafana/dashboards/`; Grafana refuses UI saves to them,
 so edit the JSON (or save a copy in the UI and export it back).
 

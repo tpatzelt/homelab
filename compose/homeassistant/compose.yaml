@@ -1,0 +1,32 @@
+services:
+  # Home Assistant (container install). Host networking is what upstream
+  # requires for discovery: mDNS/zeroconf, SSDP/UPnP, Cast and Bluetooth all
+  # need the host's own interfaces, not a bridge. Consequences:
+  #   - It listens on 0.0.0.0:8123, so http://<host-lan-ip>:8123 also works
+  #     on the LAN, outside Caddy. HA has its own login; there is no tunnel
+  #     route and no router forward, so this is LAN-only either way.
+  #   - Caddy, blackbox-exporter and homepage reach it as
+  #     host.docker.internal:8123 (extra_hosts: host-gateway), the same way
+  #     Prometheus reaches node-exporter.
+  #   - HA must trust the Docker bridges as a reverse proxy, or it answers
+  #     every request through Caddy with 400. Since 2026.x that setting lives
+  #     in /opt/dockerdata/homeassistant/.storage/http (UI-managed), not in
+  #     configuration.yaml: an http: YAML block is only imported on first boot.
+  # Runs as root: the image's s6 init does not support another user.
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:2026.11.2
+    container_name: homeassistant
+    restart: unless-stopped
+    network_mode: host
+    env_file: ./.env
+    volumes:
+      - /opt/dockerdata/homeassistant:/config
+      - /etc/localtime:/etc/localtime:ro
+      # No Bluetooth: the host has no adapter. If a USB dongle is added, mount
+      # /run/dbus:/run/dbus:ro and add cap_add NET_ADMIN + NET_RAW.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8123/manifest.json"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s

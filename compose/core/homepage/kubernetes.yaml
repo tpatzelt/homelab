@@ -1,0 +1,3 @@
+---
+# Unused. The file exists because Homepage copies a default into the config
+# directory when one is missing, and the directory is mounted read-only.
